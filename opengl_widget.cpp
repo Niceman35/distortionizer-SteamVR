@@ -155,6 +155,7 @@ QPointF OpenGL_Widget::transformPoint(QPointF p, QPointF cop, unsigned color, St
 	if ((status & APPLY_LINEAR_TRANSFORM) == APPLY_LINEAR_TRANSFORM || (status & ONLY_ASEPECT_RATIO) == ONLY_ASEPECT_RATIO) {
 		double x, y;
 		double rX, rY;
+		double ratioX, ratioY;
 		x = p.x();
 		y = p.y();
 
@@ -162,12 +163,16 @@ QPointF OpenGL_Widget::transformPoint(QPointF p, QPointF cop, unsigned color, St
 		rY = cop.y() - y;
 
 		if (eye == LEFT_EYE) {
-			x = cop.x() - (rX*Intrinsics[0][0][0]);
-			y = cop.y() - (rY*Intrinsics[0][1][1]);
+			ratioX = d_width / 2 / 1000 *  Intrinsics[0][0][0];
+			ratioY = d_height / 1000 *  Intrinsics[0][1][1];
+			x = cop.x() + (rX*ratioX);
+			y = cop.y() + (rY*ratioY);
 		}
 		else {
-			x = cop.x() - (rX*Intrinsics[1][0][0]);
-			y = cop.y() - (rY*Intrinsics[1][1][1]);
+			ratioX = d_width / 2 / 1000 *  Intrinsics[1][0][0];
+			ratioY = d_height / 1000 *  Intrinsics[1][1][1];
+			x = cop.x() + (rX*ratioX);
+			y = cop.y() + (rY*ratioY);
 		}
 		ret.setX(x);
 		ret.setY(y);
@@ -183,9 +188,18 @@ QPointF OpenGL_Widget::transformPoint(QPointF p, QPointF cop, unsigned color, St
 	//		and I believe this informs SteamVR to use a different algorithm... So in the future might need to check this value
 	//		to ensure the proper algorithm is being used.
 
-	QPointF offset = ret - cop;
-	double r2 = offset.x() * offset.x() + offset.y() * offset.y();
-	double r = sqrt(r2);
+	QPointF centerOfDistortion;
+	if (eye == LEFT_EYE) {
+		centerOfDistortion.setX(d_width / 4 + Centers[0][0] * d_width / 4);
+		centerOfDistortion.setY(d_height / 2 + Centers[0][1] * d_height / 2);
+	}
+	else {
+		centerOfDistortion.setX((d_width - d_width / 4) + Centers[1][0] * d_width / 4);
+		centerOfDistortion.setY(d_height / 2 + Centers[1][1] * d_height / 2);
+	}
+
+	QPointF offset = ret - centerOfDistortion;
+	double r = sqrt( offset.x() * offset.x() + offset.y() * offset.y() );
 	double k1, k2, k3;
 
 	switch (color) {
@@ -238,7 +252,7 @@ QPointF OpenGL_Widget::transformPoint(QPointF p, QPointF cop, unsigned color, St
 		
 	radiusCoeff = 1/(1 + k1*pow(radiusPercent,2) + k2*pow(radiusPercent,4) + k3*pow(radiusPercent,6));
 
-        ret = cop + (offset / radiusCoeff);
+	ret = centerOfDistortion + (offset / radiusCoeff);
 
 	// Cull the two eyes so any drawings on one doesn't overlap with the other. 
 	// Not very inteligent and justs draws the point outside the screen boundry for now.
@@ -296,35 +310,39 @@ void OpenGL_Widget::drawCorrectedCircle(QPointF center, float radius,
 
 void OpenGL_Widget::drawCorrectedLines(QPoint begin, QPoint end, QPointF cop, StatusValues eye)
 {
+// Should be error here. In glColor3f we have (red, green, blue). In SteamVR is green, blue, red.
+	
 	float bright = 0.5f;
 	glColor3f(bright, 0.0, 0.0);
-	drawCorrectedLine(begin, end, cop, 0, eye);
+	drawCorrectedLine(begin, end, cop, 2, eye);
 
 	glColor3f(0.0, bright, 0.0);
-	drawCorrectedLine(begin, end, cop, 1, eye);
+	drawCorrectedLine(begin, end, cop, 0, eye);
 
 	glColor3f(0.0, 0.0, bright);
-	drawCorrectedLine(begin, end, cop, 2, eye);
+	drawCorrectedLine(begin, end, cop, 1, eye);
 }
 
 void OpenGL_Widget::drawCorrectedCircles(QPointF center, float radius, QPointF cop, StatusValues eye)
 {
+// Should be error here. In glColor3f we have (red, green, blue). In SteamVR is green, blue, red.
+
 	float bright = 0.5f;
 	glColor3f(bright, 0.0, 0.0);
-	drawCorrectedCircle(center, radius, cop, 0, eye);
+	drawCorrectedCircle(center, radius, cop, 2, eye);
 
 	glColor3f(0.0, bright, 0.0);
-	drawCorrectedCircle(center, radius, cop, 1, eye);
+	drawCorrectedCircle(center, radius, cop, 0, eye);
 
 	glColor3f(0.0, 0.0, bright);
-	drawCorrectedCircle(center, radius, cop, 2, eye);
+	drawCorrectedCircle(center, radius, cop, 1, eye);
 }
 
 void OpenGL_Widget::drawCrossHairs()
 {
 	// Draw two perpendicular lines through the center of
 	// projection on the left eye, and the right eye.
-	glColor3f(0.0, 1.0, 0.0);
+	glColor3f(0.0, 0.7, 0.0); // too bright
 
 	glBegin(GL_LINES);
 	glVertex2f(0, d_cop_l.y());
@@ -635,16 +653,17 @@ void OpenGL_Widget::setDeftCOPVals() {
 			d_cop_r_Prev = d_cop_r;
 		}
 
-		double DistanceX, CxR, Cy;
+		double DistanceX, CxL, CxR, Cy;
+		CxL =  d_width / 4;
 		DistanceX = d_width / 4;
 		CxR = d_width - DistanceX;  // Same as on line 632
 		Cy = d_height / 2;
 
-		d_cop_l.setX(DistanceX + (DistanceX * -Intrinsics[0][0][2]));
-		d_cop_l.setY(Cy + (Cy * Intrinsics[0][1][2]));
+		d_cop_l.setX(CxL - (DistanceX * Intrinsics[0][0][2]));
+		d_cop_l.setY(Cy - (Cy * Intrinsics[0][1][2]));
 
-		d_cop_r.setX(CxR + (DistanceX * -Intrinsics[1][0][2]));
-		d_cop_r.setY(Cy + (Cy * Intrinsics[1][1][2]));
+		d_cop_r.setX(CxR - (DistanceX * Intrinsics[1][0][2]));
+		d_cop_r.setY(Cy - (Cy * Intrinsics[1][1][2]));
 	}
 	else {
 		// Restore previous center value because we are no longer using linear transform for center
@@ -845,8 +864,6 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	// Todo... Add some basic error checking
 
 	// Left Eye
-// 	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(Centers[0][0]);
-// 	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Centers[0][1]);
 
 	// Intrinsics
 	json["tracking_to_eye_transform"][0]["intrinsics"][0][0].SetDouble(Intrinsics[0][0][0]);
@@ -860,30 +877,28 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	json["tracking_to_eye_transform"][0]["intrinsics"][2][2].SetDouble(Intrinsics[0][2][2]);
 
 	// Green
+ 	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(Centers[0][0]);
+ 	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Centers[0][1]);
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][0][0]);
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][0][1]);
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][0][2]);
-	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
-	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 	// Blue
+ 	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_x"].SetDouble(Centers[0][0]);
+ 	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_y"].SetDouble(Centers[0][1]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][1][0]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][1][1]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][1][2]);
-	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
-	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 	// Red
+ 	json["tracking_to_eye_transform"][0]["distortion_red"]["center_x"].SetDouble(Centers[0][0]);
+ 	json["tracking_to_eye_transform"][0]["distortion_red"]["center_y"].SetDouble(Centers[0][1]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][2][0]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][2][1]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][2][2]);
-	json["tracking_to_eye_transform"][0]["distortion_red"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
-	json["tracking_to_eye_transform"][0]["distortion_red"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 
 	// Right Eye
-// 	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(Centers[1][0]);
-// 	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Centers[1][1]);
 
 	// Intrinsics
 	json["tracking_to_eye_transform"][1]["intrinsics"][0][0].SetDouble(Intrinsics[1][0][0]);
@@ -897,25 +912,25 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	json["tracking_to_eye_transform"][1]["intrinsics"][2][2].SetDouble(Intrinsics[1][2][2]);
 
 	// Green
+ 	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(Centers[1][0]);
+ 	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Centers[1][1]);
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][0][0]);
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][0][1]);
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][0][2]);
-	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
-	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	// Blue
+ 	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_x"].SetDouble(Centers[1][0]);
+ 	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_y"].SetDouble(Centers[1][1]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][1][0]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][1][1]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][1][2]);
-	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
-	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	// Red
+ 	json["tracking_to_eye_transform"][1]["distortion_red"]["center_x"].SetDouble(Centers[1][0]);
+ 	json["tracking_to_eye_transform"][1]["distortion_red"]["center_y"].SetDouble(Centers[1][1]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][2][0]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][2][1]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][2][2]);
-	json["tracking_to_eye_transform"][1]["distortion_red"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
-	json["tracking_to_eye_transform"][1]["distortion_red"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	QFile file(filename);
 	file.open(QIODevice::WriteOnly | QIODevice::Text);
@@ -1192,34 +1207,36 @@ void OpenGL_Widget::adjustAspectRatio(int w, int h) {
 }
 
 void OpenGL_Widget::ApplyCenterToIntrinsics() {
-	QPointF centerL, centerR;
+	QPointF centerL, centerR, DistanceX;
 	centerL.setX(d_width / 4);
 	centerL.setY(d_height / 2);
+	DistanceX = d_width / 4;
 
 	// Find the mirror of the left-eye's center of projection
 	// around the screen center to find the right eye's COP.
 	centerR = QPoint(d_width - centerL.x(), centerL.y());
 
-	Intrinsics[0][0][2] = (d_cop_l.x() - centerL.x()) / centerL.x();
-	Intrinsics[0][1][2] = (d_cop_l.y() - centerL.y()) / centerL.y();
+	Intrinsics[0][0][2] = ( centerL.x() - d_cop_l.x() ) / DistanceX;
+	Intrinsics[0][1][2] = ( d_cop_l.y() - centerL.y() ) / centerL.y();
 
-	Intrinsics[1][0][2] = (d_cop_r.x() - centerR.x()) / centerR.x();
-	Intrinsics[1][1][2] = (d_cop_r.y() - centerR.y()) / centerR.y();
+	Intrinsics[1][0][2] = ( centerR.x() - d_cop_r.x() ) / DistanceX;
+	Intrinsics[1][1][2] = ( d_cop_r.y() - centerR.y() ) / centerR.y();
 
 	d_cop_l_Prev = d_cop_l;
 	d_cop_r_Prev = d_cop_r;
 }
 
 void OpenGL_Widget::ApplyIntrincstsToCenter() {
-	double DistanceX, CxR, Cy;
+	double CxL, CxR, Cy, DistanceX;
+	CxL = d_width / 4;
 	DistanceX = d_width / 4;
 	CxR = d_width - DistanceX;
 	Cy = d_height / 2;
 
-	d_cop_l.setX(DistanceX + (DistanceX * -Intrinsics[0][0][2]));
+	d_cop_l.setX(CxL - (DistanceX * Intrinsics[0][0][2]));
 	d_cop_l.setY(Cy + (Cy * Intrinsics[0][1][2]));
 
-	d_cop_r.setX(CxR + (DistanceX * -Intrinsics[1][0][2]));
+	d_cop_r.setX(CxR - (DistanceX * Intrinsics[1][0][2]));
 	d_cop_r.setY(Cy + (Cy * Intrinsics[1][1][2]));
 
 	d_cop_l_Prev = d_cop_l;
