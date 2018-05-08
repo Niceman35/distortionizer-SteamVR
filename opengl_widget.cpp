@@ -310,32 +310,28 @@ void OpenGL_Widget::drawCorrectedCircle(QPointF center, float radius,
 
 void OpenGL_Widget::drawCorrectedLines(QPoint begin, QPoint end, QPointF cop, StatusValues eye)
 {
-// Should be error here. In glColor3f we have (red, green, blue). In SteamVR is green, blue, red.
-	
 	float bright = 0.5f;
 	glColor3f(bright, 0.0, 0.0);
-	drawCorrectedLine(begin, end, cop, 2, eye);
-
-	glColor3f(0.0, bright, 0.0);
 	drawCorrectedLine(begin, end, cop, 0, eye);
 
-	glColor3f(0.0, 0.0, bright);
+	glColor3f(0.0, bright, 0.0);
 	drawCorrectedLine(begin, end, cop, 1, eye);
+
+	glColor3f(0.0, 0.0, bright);
+	drawCorrectedLine(begin, end, cop, 2, eye);
 }
 
 void OpenGL_Widget::drawCorrectedCircles(QPointF center, float radius, QPointF cop, StatusValues eye)
 {
-// Should be error here. In glColor3f we have (red, green, blue). In SteamVR is green, blue, red.
-
 	float bright = 0.5f;
 	glColor3f(bright, 0.0, 0.0);
-	drawCorrectedCircle(center, radius, cop, 2, eye);
-
-	glColor3f(0.0, bright, 0.0);
 	drawCorrectedCircle(center, radius, cop, 0, eye);
 
-	glColor3f(0.0, 0.0, bright);
+	glColor3f(0.0, bright, 0.0);
 	drawCorrectedCircle(center, radius, cop, 1, eye);
+
+	glColor3f(0.0, 0.0, bright);
+	drawCorrectedCircle(center, radius, cop, 2, eye);
 }
 
 void OpenGL_Widget::drawCrossHairs()
