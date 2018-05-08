@@ -1213,10 +1213,10 @@ void OpenGL_Widget::ApplyCenterToIntrinsics() {
 	centerR = QPoint(d_width - centerL.x(), centerL.y());
 
 	Intrinsics[0][0][2] = ( centerL.x() - d_cop_l.x() ) / DistanceX;
-	Intrinsics[0][1][2] = ( d_cop_l.y() - centerL.y() ) / centerL.y();
+	Intrinsics[0][1][2] = ( centerL.y() - d_cop_l.y() ) / centerL.y();
 
 	Intrinsics[1][0][2] = ( centerR.x() - d_cop_r.x() ) / DistanceX;
-	Intrinsics[1][1][2] = ( d_cop_r.y() - centerR.y() ) / centerR.y();
+	Intrinsics[1][1][2] = ( centerR.y() - d_cop_r.y() ) / centerR.y();
 
 	d_cop_l_Prev = d_cop_l;
 	d_cop_r_Prev = d_cop_r;
@@ -1230,10 +1230,10 @@ void OpenGL_Widget::ApplyIntrincstsToCenter() {
 	Cy = d_height / 2;
 
 	d_cop_l.setX(CxL - (DistanceX * Intrinsics[0][0][2]));
-	d_cop_l.setY(Cy + (Cy * Intrinsics[0][1][2]));
+	d_cop_l.setY(Cy - (Cy * Intrinsics[0][1][2]));
 
 	d_cop_r.setX(CxR - (DistanceX * Intrinsics[1][0][2]));
-	d_cop_r.setY(Cy + (Cy * Intrinsics[1][1][2]));
+	d_cop_r.setY(Cy - (Cy * Intrinsics[1][1][2]));
 
 	d_cop_l_Prev = d_cop_l;
 	d_cop_r_Prev = d_cop_r;
