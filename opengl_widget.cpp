@@ -231,21 +231,14 @@ QPointF OpenGL_Widget::transformPoint(QPointF p, QPointF cop, unsigned color, St
 	// SteamVR seems to require these coeffiecnts fall in the range of -1 < X < 1
 	// The original tool was not properly normalizing for non square screens like the Vive.
 	// Also, I believe it was incorrectly scaling them by a factor of 16 so I dropped it from the equation.
-	double maxRadius = sqrt(d_width / 4 * d_width / 4 + d_height / 2 * d_height / 2);
-	k1 = k1 / pow(maxRadius, 2);
-	k2 = k2 / pow(maxRadius, 4);
-	k3 = k3 / pow(maxRadius, 6);
+	
+	double radiusPercent, maxRadius, radiusCoeff;
+ 	maxRadius = d_width/4; // max "round" visible radius can be half of X width. Possible I'm wrong, try d_height/2 or your "corner radius"
+	radiusPercent = r / maxRadius;
+		
+	radiusCoeff = 1/(1 + k1*pow(radiusPercent,2) + k2*pow(radiusPercent,4) + k3*pow(radiusPercent,6));
 
-
-	double c1, c2, c3;
-
-	c1 = k1 * pow(r, 2);
-	c2 = k2 * pow(r, 4);
-	c3 = k3 * pow(r, 6);
-	double k = 1 / (1 + c1 + c2 + c3);
-
-	ret = cop + (k * offset);
-
+        ret = cop + (offset / radiusCoeff);
 
 	// Cull the two eyes so any drawings on one doesn't overlap with the other. 
 	// Not very inteligent and justs draws the point outside the screen boundry for now.
@@ -360,25 +353,25 @@ void OpenGL_Widget::drawGrid()
 	// Left Eye - Right side of mid point
 	for (int r = spacing; (d_cop_l.x() + r) < (d_width / 2); r += spacing) {
 		QPoint begin(d_cop_l.x() + r, 0);
-		QPoint end(d_cop_l.x() + r, d_height - 1);
+		QPoint   end(d_cop_l.x() + r, d_height - 1);
 		drawCorrectedLines(begin, end, d_cop_l, LEFT_EYE);
 	}
 	// Left Eye - Left side of mid point
 	for (int r = spacing; (d_cop_l.x() - r) > 0; r += spacing) {
 		QPoint begin(d_cop_l.x() - r, 0);
-		QPoint end(d_cop_l.x() - r, d_height - 1);
+		QPoint   end(d_cop_l.x() - r, d_height - 1);
 		drawCorrectedLines(begin, end, d_cop_l, LEFT_EYE);
 	}
 	// Right Eye - Right side of mid point
 	for (int r = spacing; (d_cop_r.x() + r) < (d_width); r += spacing) {
 		QPoint begin(d_cop_r.x() + r, 0);
-		QPoint end(d_cop_r.x() + r, d_height - 1);
+		QPoint   end(d_cop_r.x() + r, d_height - 1);
 		drawCorrectedLines(begin, end, d_cop_r, RIGHT_EYE);
 	}
 	// Right Eye - Left side of mid point
 	for (int r = spacing; (d_cop_r.x() - r) > (d_width / 2); r += spacing) {
 		QPoint begin(d_cop_r.x() - r, 0);
-		QPoint end(d_cop_r.x() - r, d_height - 1);
+		QPoint   end(d_cop_r.x() - r, d_height - 1);
 		drawCorrectedLines(begin, end, d_cop_r, RIGHT_EYE);
 	}
 
@@ -386,26 +379,26 @@ void OpenGL_Widget::drawGrid()
 	// Horizontal lines
 	// Left Eye - Top of mid point
 	for (int r = spacing; (d_cop_l.y() - r) > 0; r += spacing) {
-		QPoint begin(0, d_cop_l.y() - r);
+		QPoint         begin(0, d_cop_l.y() - r);
 		QPoint end(d_width / 2, d_cop_l.y() - r);
 		drawCorrectedLines(begin, end, d_cop_l, LEFT_EYE);
 	}
 	// Left Eye - Bottom of mid point
 	for (int r = spacing; (d_cop_l.y() + r) < d_height; r += spacing) {
-		QPoint begin(0, d_cop_l.y() + r);
+		QPoint         begin(0, d_cop_l.y() + r);
 		QPoint end(d_width / 2, d_cop_l.y() + r);
 		drawCorrectedLines(begin, end, d_cop_l, LEFT_EYE);
 	}
 	// Right Eye - Top of mid point
 	for (int r = spacing; (d_cop_r.y() - r) > 0; r += spacing) {
 		QPoint begin(d_width / 2, d_cop_r.y() - r);
-		QPoint end(d_width, d_cop_r.y() - r);
+		QPoint       end(d_width, d_cop_r.y() - r);
 		drawCorrectedLines(begin, end, d_cop_r, RIGHT_EYE);
 	}
 	// Right Eye - Bottom of mid point
 	for (int r = spacing; (d_cop_r.y() + r) < d_height; r += spacing) {
 		QPoint begin(d_width / 2, d_cop_r.y() + r);
-		QPoint end(d_width, d_cop_r.y() + r);
+		QPoint       end(d_width, d_cop_r.y() + r);
 		drawCorrectedLines(begin, end, d_cop_r, RIGHT_EYE);
 	}
 }
@@ -642,15 +635,15 @@ void OpenGL_Widget::setDeftCOPVals() {
 			d_cop_r_Prev = d_cop_r;
 		}
 
-		double CxL, CxR, Cy;
-		CxL = d_width / 4;
-		CxR = d_width / 2 + CxL;
+		double DistanceX, CxR, Cy;
+		DistanceX = d_width / 4;
+		CxR = d_width - DistanceX;  // Same as on line 632
 		Cy = d_height / 2;
 
-		d_cop_l.setX(CxL + (CxL * Intrinsics[0][0][2]));
+		d_cop_l.setX(DistanceX + (DistanceX * -Intrinsics[0][0][2]));
 		d_cop_l.setY(Cy + (Cy * Intrinsics[0][1][2]));
 
-		d_cop_r.setX(CxR + (CxR * Intrinsics[1][0][2]));
+		d_cop_r.setX(CxR + (DistanceX * -Intrinsics[1][0][2]));
 		d_cop_r.setY(Cy + (Cy * Intrinsics[1][1][2]));
 	}
 	else {
@@ -852,8 +845,8 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	// Todo... Add some basic error checking
 
 	// Left Eye
-	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(Centers[0][0]);
-	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Centers[0][1]);
+// 	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(Centers[0][0]);
+// 	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Centers[0][1]);
 
 	// Intrinsics
 	json["tracking_to_eye_transform"][0]["intrinsics"][0][0].SetDouble(Intrinsics[0][0][0]);
@@ -870,27 +863,27 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][0][0]);
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][0][1]);
 	json["tracking_to_eye_transform"][0]["distortion"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][0][2]);
-	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(Intrinsics[0][0][2]);
+	json["tracking_to_eye_transform"][0]["distortion"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
 	json["tracking_to_eye_transform"][0]["distortion"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 	// Blue
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][1][0]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][1][1]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][1][2]);
-	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_x"].SetDouble(Intrinsics[0][0][2]);
+	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
 	json["tracking_to_eye_transform"][0]["distortion_blue"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 	// Red
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][0].SetDouble(NLT_Coeffecients[0][2][0]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][1].SetDouble(NLT_Coeffecients[0][2][1]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][2].SetDouble(NLT_Coeffecients[0][2][2]);
-	json["tracking_to_eye_transform"][0]["distortion_red"]["center_x"].SetDouble(Intrinsics[0][0][2]);
+	json["tracking_to_eye_transform"][0]["distortion_red"]["center_x"].SetDouble(-Intrinsics[0][0][2]);
 	json["tracking_to_eye_transform"][0]["distortion_red"]["center_y"].SetDouble(Intrinsics[0][1][2]);
 
 
 	// Right Eye
-	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(Centers[1][0]);
-	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Centers[1][1]);
+// 	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(Centers[1][0]);
+// 	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Centers[1][1]);
 
 	// Intrinsics
 	json["tracking_to_eye_transform"][1]["intrinsics"][0][0].SetDouble(Intrinsics[1][0][0]);
@@ -907,21 +900,21 @@ bool OpenGL_Widget::saveConfigToJson(QString filename)
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][0][0]);
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][0][1]);
 	json["tracking_to_eye_transform"][1]["distortion"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][0][2]);
-	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(Intrinsics[1][0][2]);
+	json["tracking_to_eye_transform"][1]["distortion"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
 	json["tracking_to_eye_transform"][1]["distortion"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	// Blue
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][1][0]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][1][1]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][1][2]);
-	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_x"].SetDouble(Intrinsics[1][0][2]);
+	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
 	json["tracking_to_eye_transform"][1]["distortion_blue"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	// Red
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][0].SetDouble(NLT_Coeffecients[1][2][0]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][1].SetDouble(NLT_Coeffecients[1][2][1]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["coeffs"][2].SetDouble(NLT_Coeffecients[1][2][2]);
-	json["tracking_to_eye_transform"][1]["distortion_red"]["center_x"].SetDouble(Intrinsics[1][0][2]);
+	json["tracking_to_eye_transform"][1]["distortion_red"]["center_x"].SetDouble(-Intrinsics[1][0][2]);
 	json["tracking_to_eye_transform"][1]["distortion_red"]["center_y"].SetDouble(Intrinsics[1][1][2]);
 
 	QFile file(filename);
@@ -959,8 +952,8 @@ bool OpenGL_Widget::loadConfigFromJson(QString filename)
 	// Todo make sure all the various parts of the JSON file actually exist....
 
 	// Left Eye
-	Centers[0][0] = json["tracking_to_eye_transform"][0]["distortion"]["center_x"].GetDouble();
-	Centers[0][1] = json["tracking_to_eye_transform"][0]["distortion"]["center_y"].GetDouble();
+ 	Centers[0][0] = json["tracking_to_eye_transform"][0]["distortion"]["center_x"].GetDouble();
+ 	Centers[0][1] = json["tracking_to_eye_transform"][0]["distortion"]["center_y"].GetDouble();
 
 	Intrinsics[0][0][0] = json["tracking_to_eye_transform"][0]["intrinsics"][0][0].GetDouble();
 	Intrinsics[0][0][1] = json["tracking_to_eye_transform"][0]["intrinsics"][0][1].GetDouble();
@@ -986,8 +979,8 @@ bool OpenGL_Widget::loadConfigFromJson(QString filename)
 	NLT_Coeffecients[0][2][2] = json["tracking_to_eye_transform"][0]["distortion_red"]["coeffs"][2].GetDouble();
 
 	// Right Eye
-	Centers[1][0] = json["tracking_to_eye_transform"][1]["distortion"]["center_x"].GetDouble();
-	Centers[1][1] = json["tracking_to_eye_transform"][1]["distortion"]["center_y"].GetDouble();
+ 	Centers[1][0] = json["tracking_to_eye_transform"][1]["distortion"]["center_x"].GetDouble();
+ 	Centers[1][1] = json["tracking_to_eye_transform"][1]["distortion"]["center_y"].GetDouble();
 
 	Intrinsics[1][0][0] = json["tracking_to_eye_transform"][1]["intrinsics"][0][0].GetDouble();
 	Intrinsics[1][0][1] = json["tracking_to_eye_transform"][1]["intrinsics"][0][1].GetDouble();
@@ -1218,22 +1211,19 @@ void OpenGL_Widget::ApplyCenterToIntrinsics() {
 }
 
 void OpenGL_Widget::ApplyIntrincstsToCenter() {
-	double CxL, CxR, Cy;
-	CxL = d_width / 4;
-	CxR = d_width / 2 + CxL;
+	double DistanceX, CxR, Cy;
+	DistanceX = d_width / 4;
+	CxR = d_width - DistanceX;
 	Cy = d_height / 2;
 
-	d_cop_l.setX(CxL + (CxL * Intrinsics[0][0][2]));
+	d_cop_l.setX(DistanceX + (DistanceX * -Intrinsics[0][0][2]));
 	d_cop_l.setY(Cy + (Cy * Intrinsics[0][1][2]));
 
-	d_cop_r.setX(CxR + (CxR * Intrinsics[1][0][2]));
+	d_cop_r.setX(CxR + (DistanceX * -Intrinsics[1][0][2]));
 	d_cop_r.setY(Cy + (Cy * Intrinsics[1][1][2]));
 
 	d_cop_l_Prev = d_cop_l;
 	d_cop_r_Prev = d_cop_r;
-
-
-
 }
 
 void OpenGL_Widget::loadInitalValues() {
@@ -1254,7 +1244,7 @@ void OpenGL_Widget::loadInitalValues() {
 void OpenGL_Widget::resetCenter(bool resetIntrinsics) {
 	double CxL, CxR, Cy;
 	CxL = d_width / 4;
-	CxR = d_width / 2 + CxL;
+	CxR = d_width - CxL;
 	Cy = d_height / 2;
 
 	if ((status & LEFT_EYE) == LEFT_EYE) {
