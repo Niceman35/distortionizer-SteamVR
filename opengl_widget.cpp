@@ -1203,7 +1203,9 @@ void OpenGL_Widget::adjustAspectRatio(int w, int h) {
 }
 
 void OpenGL_Widget::ApplyCenterToIntrinsics() {
-	QPointF centerL, centerR, DistanceX;
+	QPointF centerL, centerR;
+	double DistanceX;
+	
 	centerL.setX(d_width / 4);
 	centerL.setY(d_height / 2);
 	DistanceX = d_width / 4;
