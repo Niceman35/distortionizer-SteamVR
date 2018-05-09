@@ -559,13 +559,13 @@ void OpenGL_Widget::paintGL()
 		painter.drawText(rtX + xOffset, rtY + yOffset, msg);
 		yOffset = yOffset + 50;
 
-		sprintf(msg, "coeff1: %-13.8g%-13.8g%-13.8g%-13.8g%-13.8g%-13.8g\n", NLT_Coeffecients[0][0][1], NLT_Coeffecients[0][1][1],
+		sprintf(msg, "coeff2: %-13.8g%-13.8g%-13.8g%-13.8g%-13.8g%-13.8g\n", NLT_Coeffecients[0][0][1], NLT_Coeffecients[0][1][1],
 			NLT_Coeffecients[0][2][1], NLT_Coeffecients[1][0][1], NLT_Coeffecients[1][1][1], NLT_Coeffecients[1][2][1]);
 		painter.drawText(ltX + xOffset, ltY + yOffset, msg);
 		painter.drawText(rtX + xOffset, rtY + yOffset, msg);
 		yOffset = yOffset + 50;
 
-		sprintf(msg, "coeff1: %-13.8g%-13.8g%-13.8g%-13.8g%-13.8g%-13.8g\n", NLT_Coeffecients[0][0][2], NLT_Coeffecients[0][1][2],
+		sprintf(msg, "coeff3: %-13.8g%-13.8g%-13.8g%-13.8g%-13.8g%-13.8g\n", NLT_Coeffecients[0][0][2], NLT_Coeffecients[0][1][2],
 			NLT_Coeffecients[0][2][2], NLT_Coeffecients[1][0][2], NLT_Coeffecients[1][1][2], NLT_Coeffecients[1][2][2]);
 		painter.drawText(ltX + xOffset, ltY + yOffset, msg);
 		painter.drawText(rtX + xOffset, rtY + yOffset, msg);
