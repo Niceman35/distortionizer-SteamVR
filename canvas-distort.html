@@ -1,0 +1,137 @@
+<html>
+<head>
+<script type="text/javascript">
+
+var canvas, ctx, cw, ch;
+
+var coeff1 = -0.3, coeff2 = 0, coeff3 = 0;
+
+
+function strokeLine(x1, y1, x2, y2) {
+	ctx.beginPath();
+	ctx.moveTo(x1,y1);
+	ctx.lineTo(x2,y2);
+	ctx.stroke();
+}
+
+function drawGrid() {
+
+	canvas = document.getElementById('canvas');
+	ctx = canvas.getContext('2d');
+	cw = canvas.width;
+	ch = canvas.height;
+	ctx.clearRect(0, 0, cw, ch);
+
+    ctx.strokeStyle="#00DD00";
+        ctx.lineWidth="1";
+	strokeLine(0, ch/2, cw, ch/2);
+	strokeLine(cw/4, 0, cw/4, ch);
+	strokeLine(cw - cw/4, 0, cw - cw/4, ch);
+
+        let step=40;
+        ctx.strokeStyle="#555";
+
+	for(let i = step; i <= cw / 4; i+=step) {
+		strokeLine(cw/4 - i, 0, cw/4 - i, ch);
+		strokeLine(cw/4 + i, 0, cw/4 + i, ch);
+		strokeLine(cw - cw/4 - i, 0, cw - cw/4 - i, ch);
+		strokeLine(cw - cw/4 + i, 0, cw - cw/4 + i, ch);
+	}
+	for(let i = step; i < ch / 2; i+=step) {
+		strokeLine(0, ch/2 + i, cw, ch/2 + i);
+		strokeLine(0, ch/2 - i, cw, ch/2 - i);
+	}
+	ctx.beginPath();
+	ctx.arc(cw/4, ch/2, 0.1*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cw/4, ch/2, 0.3*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cw/4, ch/2, 0.7*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cw - cw/4, ch/2, 0.1*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cw - cw/4, ch/2, 0.3*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.arc(cw - cw/4, ch/2, 0.7*cw/4, 0, 2*Math.PI);
+	ctx.stroke();
+
+        distortImage("left");
+}
+
+function distortImage(eye) {
+console.log(coeff1);
+
+     let xStart = 0;
+     let xStop = cw/2;
+     if(eye == "right") {
+        xStart = cw/2;
+	xStop = cw;
+     }
+let centerX = (xStart + xStop) / 2;
+let centerY = ch/2;
+
+
+let imgData=ctx.getImageData(0,0,cw/2,ch);
+let Distorted = ctx.createImageData(cw/2,ch);
+
+    for (let iC = 0; iC < imgData.data.length; iC += 4) {
+        if(imgData.data[iC+3] > 0) {                  
+
+		let y = Math.floor(iC / 4 / imgData.width);
+                let x = iC / 4 - y * imgData.width;
+
+let dX =  x - centerX;
+let dY =  y - centerY;
+let radius = Math.sqrt(dX*dX + dY*dY);
+let radiusPercent = radius / centerY;
+let RadiusCoeff = 1/(1 + coeff1*Math.pow(radiusPercent,2) + coeff2*Math.pow(radiusPercent,4) + coeff3*Math.pow(radiusPercent,6));
+let newX = Math.round(centerX + (dX / RadiusCoeff));
+let newY = Math.round(centerY + (dY / RadiusCoeff));
+
+let distNumber = (newY*Distorted.width)*4 + newX*4;
+Distorted.data[distNumber] = 150;
+Distorted.data[distNumber+1] = 150;
+Distorted.data[distNumber+2] = 150;
+Distorted.data[distNumber+3] = 255;
+
+                }
+             }
+//       }
+ctx.putImageData(Distorted, 0, 0);
+
+
+}
+
+document.addEventListener("keydown", keyDownHandle, false);
+
+function keyDownHandle(e) {
+  var keyCode = e.keyCode;
+    console.log("KeyCode = " + keyCode);
+
+if(keyCode == 50) {
+    coeff1 += 0.01;
+drawGrid();
+}
+if(keyCode == 49) {
+    coeff1 -= 0.01;
+drawGrid();
+}
+
+}
+
+</script>
+</head>
+<body onload="drawGrid()" style="margin:0;border:0;padding:0;">
+<canvas id="canvas" width="2160" height="1200">
+</body>
+</html>
