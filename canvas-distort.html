@@ -18,18 +18,21 @@ function drawGrid() {
 
 	canvas = document.getElementById('canvas');
 	ctx = canvas.getContext('2d');
+canvas.setAttribute('crossOrigin', '');
 	cw = canvas.width;
 	ch = canvas.height;
 	ctx.clearRect(0, 0, cw, ch);
+ctx.fillStyle = "#000";
+ctx.fillRect(0, 0, cw, ch);
 
-    ctx.strokeStyle="#00DD00";
+        ctx.strokeStyle="#00DD00";
         ctx.lineWidth="1";
 	strokeLine(0, ch/2, cw, ch/2);
 	strokeLine(cw/4, 0, cw/4, ch);
 	strokeLine(cw - cw/4, 0, cw - cw/4, ch);
 
         let step=40;
-        ctx.strokeStyle="#555";
+        ctx.strokeStyle="#888";
 
 	for(let i = step; i <= cw / 4; i+=step) {
 		strokeLine(cw/4 - i, 0, cw/4 - i, ch);
@@ -83,9 +86,13 @@ let centerY = ch/2;
 
 let imgData=ctx.getImageData(0,0,cw/2,ch);
 let Distorted = ctx.createImageData(cw/2,ch);
+for (var i=0;i<Distorted.data.length;i+=4)
+  {
+  Distorted.data[i+3]=255;
+  }
 
     for (let iC = 0; iC < imgData.data.length; iC += 4) {
-        if(imgData.data[iC+3] > 0) {                  
+        if(imgData.data[iC+0] + imgData.data[iC+1] + imgData.data[iC+2] > 0) {                  
 
 		let y = Math.floor(iC / 4 / imgData.width);
                 let x = iC / 4 - y * imgData.width;
@@ -93,20 +100,21 @@ let Distorted = ctx.createImageData(cw/2,ch);
 let dX =  x - centerX;
 let dY =  y - centerY;
 let radius = Math.sqrt(dX*dX + dY*dY);
-let radiusPercent = radius / centerY;
+
+let radiusPercent = radius / (centerY*2);
+
 let RadiusCoeff = 1/(1 + coeff1*Math.pow(radiusPercent,2) + coeff2*Math.pow(radiusPercent,4) + coeff3*Math.pow(radiusPercent,6));
 let newX = Math.round(centerX + (dX / RadiusCoeff));
 let newY = Math.round(centerY + (dY / RadiusCoeff));
-
-let distNumber = (newY*Distorted.width)*4 + newX*4;
-Distorted.data[distNumber] = 150;
-Distorted.data[distNumber+1] = 150;
-Distorted.data[distNumber+2] = 150;
-Distorted.data[distNumber+3] = 255;
-
+if(newX > xStart && newX < xStop && newY > 0 && newY < ch) {
+  let distNumber = (newY*Distorted.width)*4 + newX*4;
+  Distorted.data[distNumber] = imgData.data[iC];
+  Distorted.data[distNumber+1] = imgData.data[iC+1];
+  Distorted.data[distNumber+2] = imgData.data[iC+2];
+  Distorted.data[distNumber+3] = imgData.data[iC+3];
+}
                 }
              }
-//       }
 ctx.putImageData(Distorted, 0, 0);
 
 
