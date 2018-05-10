@@ -8,7 +8,7 @@ let cXL, cXR, cYL, cYR, MaxRadius;
 
 var Coeff1 = -0.3, Coeff2 = 0, Coeff3 = 0;
 
-var GridDataLeft, GridDataright;
+var GridDataLeft, GridDataRight;
 
 
 function strokeLine(x1, y1, x2, y2) {
@@ -141,7 +141,7 @@ let Distorted = ctx.createImageData(cw/2,ch);
 //  }
 
 
-    for (let iC = 0; iC < GridDataLeft.length; iC ++) {
+    for (let iC = 0; iC < Grid.length; iC ++) {
 //        if(imgData.data[iC+0] + imgData.data[iC+1] + imgData.data[iC+2] > 0) {                  
 
 	let dX = GridDataLeft[iC][0];
