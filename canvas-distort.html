@@ -206,7 +206,8 @@
 
             let distorted = Ctx.createImageData(CWidth/2, CHeight);
             for (let iC = 0; iC < grid.length; iC ++) {
-                ['green', 'blue', 'red'].forEach(function(color) {
+//                ['green', 'blue', 'red'].forEach(function(color) {
+                ['red'].forEach(function(color) {
                     let coefC1 = coeffs[color].coeffs[0];
                     let coefC2 = coeffs[color].coeffs[1]; //  - coefC1*coefC1;
                     let coefC3 = coeffs[color].coeffs[2]; // - coefC2*coefC2 - coefC1*coefC1 ;
@@ -224,8 +225,8 @@
                     if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight) {
                         let distNumber = (newY * distorted.width + newX)*4;
                         if(color === 'red') distorted.data[distNumber] += 100;
-//                        if(color === 'green') distorted.data[distNumber+1] += 100;
-//                        if(color === 'blue') distorted.data[distNumber+2] += 100;
+                        if(color === 'green') distorted.data[distNumber+1] += 100;
+                        if(color === 'blue') distorted.data[distNumber+2] += 100;
                         distorted.data[distNumber+3] = 255;
                     }
                 });
