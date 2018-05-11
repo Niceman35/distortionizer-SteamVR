@@ -4,7 +4,7 @@
 
         let Canvas, Ctx, CWidth, CHeight;
         let CXL, CXR, CYL, CYR, MaxRadius, GridSpace;
-        GridSpace = 41;
+        GridSpace = 49;
         let Distortion = {
             left:{center:[0.0, 0.0], red:{}, green:{}, blue:{}},
             right: {center:[0.0, 0.0], red:{}, green:{}, blue:{}}
@@ -206,7 +206,6 @@
 
             let distorted = Ctx.createImageData(CWidth/2, CHeight);
             for (let iC = 0; iC < grid.length; iC ++) {
-//                ['green', 'blue', 'red'].forEach(function(color) {
                 ['red'].forEach(function(color) {
                     let coefC1 = coeffs[color].coeffs[0];
                     let coefC2 = coeffs[color].coeffs[1]; //  - coefC1*coefC1;
@@ -219,10 +218,11 @@
                     let coef2 = coefC2 * Math.pow(radiusNorm,4);
                     let coef3 = coefC3 * Math.pow(radiusNorm,6);
 
-                    let RadiusCoeff = 1/(1 + coef1 + coef2 + coef3);
+                    let RadiusCoeff = 1 / (1 + coef1 + coef2 + coef3);
+
                     let newX = Math.round(centerX + (grid[iC][0] / RadiusCoeff));
                     let newY = Math.round(centerY + (grid[iC][1] / RadiusCoeff));
-                    if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight) {
+                    if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight && RadiusCoeff < 1.5 && RadiusCoeff > 0) {
                         let distNumber = (newY * distorted.width + newX)*4;
                         if(color === 'red') distorted.data[distNumber] += 100;
                         if(color === 'green') distorted.data[distNumber+1] += 100;
@@ -233,7 +233,7 @@
             }
             Ctx.putImageData(distorted, xStart, 0);
             let bench = performance.now() - startTimer;
-            //console.log("Finished in:" + Math.round(bench) + "ms");
+            console.log("Finished in:" + Math.round(bench) + "ms");
         }
 
         function appendDistortions() {
@@ -275,12 +275,12 @@
 //             console.log(e);
 
             if(e.code === "KeyR" && e.shiftKey === false) {
-                MaxRadius += 1;
+                MaxRadius += 10;
                 console.log(MaxRadius);
                 appendDistortions();
             }
             if(e.code === "KeyR" && e.shiftKey === true) {
-                MaxRadius -= 1;
+                MaxRadius -= 10;
                 console.log(MaxRadius);
                 appendDistortions();
             }
@@ -465,7 +465,7 @@
     </STYLE>
 </head>
 <body style="margin:0;border:0;padding:0;background:#000;" onload="prepareData()">
-<img src="ALL.gif">
+<img src="0,2-0,4.png">
 <canvas id="canvas" width="2160" height="1200" style="position: absolute; top: 0; left: 0"></canvas>
 <SCRIPT>
     Canvas = document.getElementById('canvas');
