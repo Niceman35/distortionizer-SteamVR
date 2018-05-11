@@ -1,7 +1,7 @@
 <html>
 <head>
-    <script type="text/javascript">        
-        
+    <script type="text/javascript">
+
         let Canvas, Ctx, CWidth, CHeight;
         let CXL, CXR, CYL, CYR, MaxRadius;
         let Distortion = {
@@ -466,16 +466,15 @@
 </SCRIPT>
 <DIV style="color: white; padding: 500px;">
     <label for="JSONData">Put your SteamVR JSON Here</label><BR><textarea id="JSONData" rows="10" cols="100">
-{
     "tracking_to_eye_transform": [
         {
             "distortion": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
-                    -0.15,
-                    0,
-                    0,
+                    -0.22,
+                    -0.02,
+                    -0.05,
                     0.0,
                     0.0,
                     0.0,
@@ -485,12 +484,12 @@
                 "type": "DISTORT_DPOLY3"
             },
             "distortion_blue": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
-                    -0.15,
-                    -0.1,
-                    0,
+                    -0.22,
+                    -0.02,
+                    -0.05,
                     0.0,
                     0.0,
                     0.0,
@@ -500,12 +499,12 @@
                 "type": "DISTORT_DPOLY3"
             },
             "distortion_red": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
                     -0.15,
-                    -0.1,
-                    -0.1,
+                    -0.05,
+                    -0.02,
                     0.0,
                     0.0,
                     0.0,
@@ -534,17 +533,17 @@
                     -7.450580596923828e-09
                 ]
             ],
-            "grow_for_undistort": 0.0,
+            "grow_for_undistort": 0,
             "intrinsics": [
                 [
-                    1.2,
+                    1.208980321884155,
                     0.0,
-                    0.0
+                    0
                 ],
                 [
                     0.0,
-                    1.08,
-                    0.0
+                    1.088285446166992,
+                    0
                 ],
                 [
                     0.0,
@@ -552,16 +551,16 @@
                     -1.0
                 ]
             ],
-            "undistort_r2_cutoff": 0.0
+            "undistort_r2_cutoff": 1.139537453651428
         },
         {
             "distortion": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
-                    0,
-                    -0.2,
-                    0,
+                    -0.25,
+                    -0.02,
+                    -0.05,
                     0.0,
                     0.0,
                     0.0,
@@ -571,12 +570,12 @@
                 "type": "DISTORT_DPOLY3"
             },
             "distortion_blue": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
-                    0,
-                    -0.2,
-                    0.1,
+                    -0.25,
+                    -0.02,
+                    -0.05,
                     0.0,
                     0.0,
                     0.0,
@@ -586,12 +585,12 @@
                 "type": "DISTORT_DPOLY3"
             },
             "distortion_red": {
-                "center_x": 0.0,
-                "center_y": 0.0,
+                "center_x": 0,
+                "center_y": 0,
                 "coeffs": [
-                    0,
-                    -0.2,
-                    -0.1,
+                    -0.17,
+                    -0.07,
+                    -0.01,
                     0.0,
                     0.0,
                     0.0,
@@ -620,17 +619,17 @@
                     -7.450580596923828e-09
                 ]
             ],
-            "grow_for_undistort": 0.0,
+            "grow_for_undistort": 0,
             "intrinsics": [
                 [
-                    1.2,
+                    1.213360190391541,
                     0.0,
-                    0.0
+                    0
                 ],
                 [
                     0.0,
-                    1.08,
-                    0.0
+                    1.09216833114624,
+                    0
                 ],
                 [
                     0.0,
@@ -638,10 +637,9 @@
                     -1.0
                 ]
             ],
-            "undistort_r2_cutoff": 0.0
+            "undistort_r2_cutoff": 1.112588882446289
         }
     ]
-}
 </textarea><BR>
     <input type="button" value="Parse" onclick="prepareData()">
 </DIV>
