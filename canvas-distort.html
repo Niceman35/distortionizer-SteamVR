@@ -3,7 +3,8 @@
     <script type="text/javascript">
 
         let Canvas, Ctx, CWidth, CHeight;
-        let CXL, CXR, CYL, CYR, MaxRadius;
+        let CXL, CXR, CYL, CYR, MaxRadius, GridSpace;
+        GridSpace = 41;
         let Distortion = {
             left:{center:[0.0, 0.0], red:{}, green:{}, blue:{}},
             right: {center:[0.0, 0.0], red:{}, green:{}, blue:{}}
@@ -70,7 +71,7 @@
             Ctx.lineWidth=1;
             Ctx.strokeStyle="#888";
 
-            let step=40;
+            let step=GridSpace;
             let x1 = CXL;
             do {
                 strokeLine(x1, 0, x1, CHeight);
@@ -113,29 +114,29 @@
                 y1 += step;
             } while(y1 < CHeight);
 
-            Ctx.beginPath();
-            Ctx.arc(CXL, CYL, 0.1*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
-
-            Ctx.beginPath();
-            Ctx.arc(CXL, CYL, 0.3*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
-
-            Ctx.beginPath();
-            Ctx.arc(CXL, CYL, 0.7*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
-
-            Ctx.beginPath();
-            Ctx.arc(CXR, CYR, 0.1*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
-
-            Ctx.beginPath();
-            Ctx.arc(CXR, CYR, 0.3*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
-
-            Ctx.beginPath();
-            Ctx.arc(CXR, CYR, 0.7*CWidth/4, 0, 2*Math.PI);
-            Ctx.stroke();
+            // Ctx.beginPath();
+            // Ctx.arc(CXL, CYL, 0.1*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
+            //
+            // Ctx.beginPath();
+            // Ctx.arc(CXL, CYL, 0.3*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
+            //
+            // Ctx.beginPath();
+            // Ctx.arc(CXL, CYL, 0.7*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
+            //
+            // Ctx.beginPath();
+            // Ctx.arc(CXR, CYR, 0.1*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
+            //
+            // Ctx.beginPath();
+            // Ctx.arc(CXR, CYR, 0.3*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
+            //
+            // Ctx.beginPath();
+            // Ctx.arc(CXR, CYR, 0.7*CWidth/4, 0, 2*Math.PI);
+            // Ctx.stroke();
 
             GridDataLeft = [];
             let imgData=Ctx.getImageData(0,0,CWidth/2,CHeight);
@@ -207,8 +208,10 @@
             for (let iC = 0; iC < grid.length; iC ++) {
                 ['green', 'blue', 'red'].forEach(function(color) {
                     let coefC1 = coeffs[color].coeffs[0];
-                    let coefC2 = coeffs[color].coeffs[1] + coefC1*coefC1;
-                    let coefC3 = coeffs[color].coeffs[2];
+                    let coefC2 = coeffs[color].coeffs[1]; //  - coefC1*coefC1;
+                    let coefC3 = coeffs[color].coeffs[2]; // - coefC2*coefC2 - coefC1*coefC1 ;
+
+                    //console.log(coefC1, coefC2, coefC3);
                     let radiusNorm = Math.sqrt(grid[iC][0]*grid[iC][0] + grid[iC][1]*grid[iC][1]) / MaxRadius;
 
                     let coef1 = coefC1 * Math.pow(radiusNorm,2);
@@ -220,16 +223,16 @@
                     let newY = Math.round(centerY + (grid[iC][1] / RadiusCoeff));
                     if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight) {
                         let distNumber = (newY * distorted.width + newX)*4;
-                        if(color === 'red') distorted.data[distNumber] += 255;
-                        if(color === 'green') distorted.data[distNumber+1] += 255;
-                        if(color === 'blue') distorted.data[distNumber+2] += 255;
+                        if(color === 'red') distorted.data[distNumber] += 100;
+//                        if(color === 'green') distorted.data[distNumber+1] += 100;
+//                        if(color === 'blue') distorted.data[distNumber+2] += 100;
                         distorted.data[distNumber+3] = 255;
                     }
                 });
             }
             Ctx.putImageData(distorted, xStart, 0);
             let bench = performance.now() - startTimer;
-            console.log("Finished in:" + Math.round(bench) + "ms");
+            //console.log("Finished in:" + Math.round(bench) + "ms");
         }
 
         function appendDistortions() {
@@ -272,109 +275,116 @@
 
             if(e.code === "KeyR" && e.shiftKey === false) {
                 MaxRadius += 1;
+                console.log(MaxRadius);
                 appendDistortions();
             }
             if(e.code === "KeyR" && e.shiftKey === true) {
                 MaxRadius -= 1;
+                console.log(MaxRadius);
                 appendDistortions();
             }
 
+            if(e.code === "KeyG" && e.shiftKey === false) {
+                GridSpace += 1;
+                console.log(GridSpace);
+                drawGrid();
+            }
+            if(e.code === "KeyG" && e.shiftKey === true) {
+                GridSpace -= 1;
+                console.log(GridSpace);
+                drawGrid();
+            }
+
             if(e.keyCode === 49 && e.shiftKey === false) {  // 1
-                Distortion.left.green.coeffs[0] += 0.01;
-                Distortion.right.green.coeffs[0] += 0.01;
+                Distortion.left.green.coeffs[0] += 0.001;
+                Distortion.right.green.coeffs[0] += 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 49 && e.shiftKey === true) {  // 1
-                Distortion.left.green.coeffs[0] -= 0.01;
-                Distortion.right.green.coeffs[0] -= 0.01;
+                Distortion.left.green.coeffs[0] -= 0.001;
+                Distortion.right.green.coeffs[0] -= 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 50 && e.shiftKey === false) {   // 2
-                Distortion.left.green.coeffs[1] += 0.01;
-                Distortion.right.green.coeffs[1] += 0.01;
+                Distortion.left.green.coeffs[1] += 0.001;
+                Distortion.right.green.coeffs[1] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 50 && e.shiftKey === true) {  // 2
-                Distortion.left.green.coeffs[1] -= 0.01;
-                Distortion.right.green.coeffs[1] -= 0.01;
+                Distortion.left.green.coeffs[1] -= 0.001;
+                Distortion.right.green.coeffs[1] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 51 && e.shiftKey === false) {  // 3
-                Distortion.left.green.coeffs[2] += 0.01;
-                Distortion.right.green.coeffs[2] += 0.01;
+                Distortion.left.green.coeffs[2] += 0.001;
+                Distortion.right.green.coeffs[2] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 51 && e.shiftKey === true) {  // 3
-                Distortion.left.green.coeffs[2] -= 0.01;
-                Distortion.right.green.coeffs[2] -= 0.01;
+                Distortion.left.green.coeffs[2] -= 0.001;
+                Distortion.right.green.coeffs[2] -= 0.001;
                 appendDistortions();
             }
 
             if(e.keyCode === 52 && e.shiftKey === false) {  // 4
-                Distortion.left.blue.coeffs[0] += 0.01;
-                Distortion.right.blue.coeffs[0] += 0.01;
+                Distortion.left.blue.coeffs[0] += 0.001;
+                Distortion.right.blue.coeffs[0] += 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 52 && e.shiftKey === true) {  // 4
-                Distortion.left.blue.coeffs[0] -= 0.01;
-                Distortion.right.blue.coeffs[0] -= 0.01;
+                Distortion.left.blue.coeffs[0] -= 0.001;
+                Distortion.right.blue.coeffs[0] -= 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 53 && e.shiftKey === false) {   // 5
-                Distortion.left.blue.coeffs[1] += 0.01;
-                Distortion.right.blue.coeffs[1] += 0.01;
+                Distortion.left.blue.coeffs[1] += 0.001;
+                Distortion.right.blue.coeffs[1] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 53 && e.shiftKey === true) {  // 5
-                Distortion.left.blue.coeffs[1] -= 0.01;
-                Distortion.right.blue.coeffs[1] -= 0.01;
+                Distortion.left.blue.coeffs[1] -= 0.001;
+                Distortion.right.blue.coeffs[1] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 54 && e.shiftKey === false) {  // 6
-                Distortion.left.blue.coeffs[2] += 0.01;
-                Distortion.right.blue.coeffs[2] += 0.01;
+                Distortion.left.blue.coeffs[2] += 0.001;
+                Distortion.right.blue.coeffs[2] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 54 && e.shiftKey === true) {  // 6
-                Distortion.left.blue.coeffs[2] -= 0.01;
-                Distortion.right.blue.coeffs[2] -= 0.01;
+                Distortion.left.blue.coeffs[2] -= 0.001;
+                Distortion.right.blue.coeffs[2] -= 0.001;
                 appendDistortions();
             }
 
             if(e.keyCode === 55 && e.shiftKey === false) {  // 7
-                Distortion.left.red.coeffs[0] += 0.01;
-                Distortion.right.red.coeffs[0] += 0.01;
+                Distortion.left.red.coeffs[0] += 0.001;
+                Distortion.right.red.coeffs[0] += 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 55 && e.shiftKey === true) {  // 7
-                Distortion.left.red.coeffs[0] -= 0.01;
-                Distortion.right.red.coeffs[0] -= 0.01;
+                Distortion.left.red.coeffs[0] -= 0.001;
+                Distortion.right.red.coeffs[0] -= 0.001;
                 appendDistortions();
-                e.preventDefault();
             }
             if(e.keyCode === 56 && e.shiftKey === false) {   // 8
-                Distortion.left.red.coeffs[1] += 0.01;
-                Distortion.right.red.coeffs[1] += 0.01;
+                Distortion.left.red.coeffs[1] += 0.001;
+                Distortion.right.red.coeffs[1] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 56 && e.shiftKey === true) {  // 8
-                Distortion.left.red.coeffs[1] -= 0.01;
-                Distortion.right.red.coeffs[1] -= 0.01;
+                Distortion.left.red.coeffs[1] -= 0.001;
+                Distortion.right.red.coeffs[1] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 57 && e.shiftKey === false) {  // 9
-                Distortion.left.red.coeffs[2] += 0.01;
-                Distortion.right.red.coeffs[2] += 0.01;
+                Distortion.left.red.coeffs[2] += 0.001;
+                Distortion.right.red.coeffs[2] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 57 && e.shiftKey === true) {  // 9
-                Distortion.left.red.coeffs[2] -= 0.01;
-                Distortion.right.red.coeffs[2] -= 0.01;
+                Distortion.left.red.coeffs[2] -= 0.001;
+                Distortion.right.red.coeffs[2] -= 0.001;
                 appendDistortions();
             }
 
@@ -454,7 +464,7 @@
     </STYLE>
 </head>
 <body style="margin:0;border:0;padding:0;background:#000;" onload="prepareData()">
-<img src="ALL.png">
+<img src="ALL.gif">
 <canvas id="canvas" width="2160" height="1200" style="position: absolute; top: 0; left: 0"></canvas>
 <SCRIPT>
     Canvas = document.getElementById('canvas');
@@ -468,15 +478,15 @@
 <DIV style="color: white; padding: 500px;">
     <label for="JSONData">Put your SteamVR JSON Here</label><BR><textarea id="JSONData" rows="10" cols="100">
 {
-"tracking_to_eye_transform": [
+    "tracking_to_eye_transform": [
         {
             "distortion": {
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.22,
-                    -0.02,
-                    -0.05,
+                    -0.1,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -489,9 +499,9 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.22,
-                    -0.02,
-                    -0.05,
+                    -0.1,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -504,9 +514,9 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.15,
-                    -0.05,
-                    -0.02,
+                    -0.2,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -560,9 +570,9 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.25,
-                    -0.02,
-                    -0.05,
+                    -0.3,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -575,9 +585,9 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.25,
-                    -0.02,
-                    -0.05,
+                    -0.3,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -590,9 +600,9 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.17,
-                    -0.07,
-                    -0.01,
+                    -0.4,
+                    0,
+                    0,
                     0.0,
                     0.0,
                     0.0,
@@ -642,7 +652,7 @@
             "undistort_r2_cutoff": 1.112588882446289
         }
     ]
-}
+    }
 
 </textarea><BR>
     <input type="button" value="Parse" onclick="prepareData()">
