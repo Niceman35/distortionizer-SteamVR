@@ -148,8 +148,8 @@
                     x = iC / 4 - y * imgData.width;
                     dX = x - centerX;
                     dY = y - centerY;
-                    radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
-                    GridDataLeft.push([dX, dY, radius]);
+                    // radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
+                    GridDataLeft.push([dX, dY]);
                 }
             }
 
@@ -163,8 +163,8 @@
                     x = (iC / 4 - y * imgData.width) + (CWidth / 2);
                     dX = x - centerX;
                     dY = y - centerY;
-                    radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
-                    GridDataRight.push([dX, dY, radius]);
+                    // radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
+                    GridDataRight.push([dX, dY]);
                 }
             }
             appendDistortions();
@@ -209,10 +209,11 @@
                     let coefC1 = coeffs[color].coeffs[0];
                     let coefC2 = coeffs[color].coeffs[1] + coefC1*coefC1;
                     let coefC3 = coeffs[color].coeffs[2];
+                    let radiusNorm = Math.sqrt(grid[iC][0]*grid[iC][0] + grid[iC][1]*grid[iC][1]) / MaxRadius;
 
-                    let coef1 = coefC1 * Math.pow(grid[iC][2],2);
-                    let coef2 = coefC2 * Math.pow(grid[iC][2],4);
-                    let coef3 = coefC3 * Math.pow(grid[iC][2],6);
+                    let coef1 = coefC1 * Math.pow(radiusNorm,2);
+                    let coef2 = coefC2 * Math.pow(radiusNorm,4);
+                    let coef3 = coefC3 * Math.pow(radiusNorm,6);
 
                     let RadiusCoeff = 1/(1 + coef1 + coef2 + coef3);
                     let newX = Math.round(centerX + (grid[iC][0] / RadiusCoeff));
