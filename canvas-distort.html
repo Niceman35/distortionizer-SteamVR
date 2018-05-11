@@ -1,186 +1,653 @@
 <html>
 <head>
-    <script type="text/javascript">
+    <script type="text/javascript">        
+        
+        let Canvas, Ctx, CWidth, CHeight;
+        let CXL, CXR, CYL, CYR, MaxRadius;
+        let Distortion = {
+            left:{center:[0.0, 0.0], red:{}, green:{}, blue:{}},
+            right: {center:[0.0, 0.0], red:{}, green:{}, blue:{}}
+        };
+        let Intrinsics = {
+            left:{
+                scaleX:0.0,
+                scaleY:0.0,
+                shiftX: 0.0,
+                shiftY: 0.0
+            },
+            right:{
+                scaleX:0.0,
+                scaleY:0.0,
+                shiftX: 0.0,
+                shiftY: 0.0
+            }
+        };
 
-        var canvas, ctx, cw, ch;
+        let GridDataLeft, GridDataRight;
+        let JsonData;
 
-        let cXL, cXR, cYL, cYR, MaxRadius;
+        function prepareData() {
+            JsonData = JSON.parse(document.getElementById("JSONData").value);
+            console.log(JsonData);
+            Distortion.left.green  = JsonData['tracking_to_eye_transform'][0]['distortion'];
+            Distortion.left.blue   = JsonData['tracking_to_eye_transform'][0]['distortion_blue'];
+            Distortion.left.red    = JsonData['tracking_to_eye_transform'][0]['distortion_red'];
+            Intrinsics.left.scaleX = JsonData['tracking_to_eye_transform'][0]['intrinsics'][0][0];
+            Intrinsics.left.shiftX = JsonData['tracking_to_eye_transform'][0]['intrinsics'][0][2];
+            Intrinsics.left.scaleY = JsonData['tracking_to_eye_transform'][0]['intrinsics'][1][1];
+            Intrinsics.left.shiftY = JsonData['tracking_to_eye_transform'][0]['intrinsics'][1][2];
 
-        var Coeff1 = -0.3, Coeff2 = 0, Coeff3 = 0;
-
-        var GridDataLeft, GridDataRight;
-
+            Distortion.right.green  = JsonData['tracking_to_eye_transform'][1]['distortion'];
+            Distortion.right.blue   = JsonData['tracking_to_eye_transform'][1]['distortion_blue'];
+            Distortion.right.red    = JsonData['tracking_to_eye_transform'][1]['distortion_red'];
+            Intrinsics.right.scaleX = JsonData['tracking_to_eye_transform'][1]['intrinsics'][0][0];
+            Intrinsics.right.shiftX = JsonData['tracking_to_eye_transform'][1]['intrinsics'][0][2];
+            Intrinsics.right.scaleY = JsonData['tracking_to_eye_transform'][1]['intrinsics'][1][1];
+            Intrinsics.right.shiftY = JsonData['tracking_to_eye_transform'][1]['intrinsics'][1][2];
+            drawGrid();
+        }
 
         function strokeLine(x1, y1, x2, y2) {
-            ctx.beginPath();
-            ctx.moveTo(x1,y1);
-            ctx.lineTo(x2,y2);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.moveTo(x1,y1);
+            Ctx.lineTo(x2,y2);
+            Ctx.stroke();
         }
 
         function drawGrid() {
-            canvas = document.getElementById('canvas');
-            ctx = canvas.getContext('2d');
-            cw = canvas.width;
-            ch = canvas.height;
-            MaxRadius = cw/4;
-            ctx.clearRect(0, 0, cw, ch);
-            ctx.translate(0.5, 0.5); // no alias lines
 
-            cXL = Math.round(cw/4);
-            cXR = Math.round(cw - cw/4);
-            cYL = Math.round(ch/2);
-            cYR = Math.round(ch/2);
+            Ctx.clearRect(0, 0, CWidth, CHeight);
 
-            ctx.lineWidth=1;
+            CXL = Math.round(CWidth/4) - Math.round(CWidth/4 * Intrinsics.left.shiftX);
+            CYL = Math.round(CHeight/2) + Math.round(CHeight/2 * Intrinsics.left.shiftY);
+
+            CXR = Math.round(CWidth - CWidth/4) - Math.round(CWidth/4 * Intrinsics.right.shiftX);
+            CYR = Math.round(CHeight/2) + Math.round(CHeight/2 * Intrinsics.right.shiftY);
+
+            document.getElementById('leftEyeInterface').style.left = 0-Math.round(CWidth/4 * Intrinsics.left.shiftX)+'px';
+            document.getElementById('rightEyeInterface').style.left = 1080-Math.round(CWidth/4 * Intrinsics.right.shiftX)+'px';
+
+            Ctx.lineWidth=1;
+            Ctx.strokeStyle="#888";
 
             let step=40;
-            ctx.strokeStyle="#888";
+            let x1 = CXL;
+            do {
+                strokeLine(x1, 0, x1, CHeight);
+                x1 -= step;
+            } while(x1 > 0);
+            x1 = CXL + step;
+            do {
+                strokeLine(x1, 0, x1, CHeight);
+                x1 += step;
+            } while(x1 < CWidth/2);
+            x1 = CXR;
+            do {
+                strokeLine(x1, 0, x1, CHeight);
+                x1 -= step;
+            } while(x1 > CWidth/2);
+            x1 = CXR + step;
+            do {
+                strokeLine(x1, 0, x1, CHeight);
+                x1 += step;
+            } while(x1 < CWidth);
 
-            for(let i = step; i <= cw / 4; i+=step) {
-                strokeLine(cXL - i, 0, cXL - i, ch);
-                strokeLine(cXL + i, 0, cXL + i, ch);
-                strokeLine(cXR - i, 0, cXR - i, ch);
-                strokeLine(cXR + i, 0, cXR + i, ch);
-            }
-            for(let i = step; i < ch / 2; i+=step) {
-                strokeLine(   0, cYL + i, cw/2, cYL + i);
-                strokeLine(cw/2, cYL + i,   cw, cYL + i);
-                strokeLine(   0, cYR - i, cw/2, cYR - i);
-                strokeLine(cw/2, cYR - i, cw, cYR - i);
+            let y1 = CYL;
+            do {
+                strokeLine(0, y1, CWidth/2-1, y1);
+                y1 -= step;
+            } while(y1 > 0);
+            y1 = CYL + step;
+            do {
+                strokeLine(0, y1, CWidth/2-1, y1);
+                y1 += step;
+            } while(y1 < CHeight);
+            y1 = CYR;
+            do {
+                strokeLine(CWidth/2, y1, CWidth, y1);
+                y1 -= step;
+            } while(y1 > 0);
+            y1 = CYR + step;
+            do {
+                strokeLine(CWidth/2, y1, CWidth, y1);
+                y1 += step;
+            } while(y1 < CHeight);
 
-            }
-            ctx.beginPath();
-            ctx.arc(cXL, cYL, 0.1*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXL, CYL, 0.1*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(cXL, cYL, 0.3*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXL, CYL, 0.3*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(cXL, cYL, 0.7*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXL, CYL, 0.7*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(cXR, cYR, 0.1*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXR, CYR, 0.1*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(cXR, cYR, 0.3*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXR, CYR, 0.3*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-            ctx.beginPath();
-            ctx.arc(cXR, cYR, 0.7*cw/4, 0, 2*Math.PI);
-            ctx.stroke();
+            Ctx.beginPath();
+            Ctx.arc(CXR, CYR, 0.7*CWidth/4, 0, 2*Math.PI);
+            Ctx.stroke();
 
-
-            let imgData=ctx.getImageData(0,0,cw/2,ch);
             GridDataLeft = [];
-            let x, y, dX, dY, centerX = Math.round(cw/4), centerY=Math.round(ch/2);
+            let imgData=Ctx.getImageData(0,0,CWidth/2,CHeight);
+            let x, y, dX, dY, radius, centerX, centerY;
+            centerX = Math.round(CWidth / 4 + CWidth / 4 * Distortion.left.green.center_x);
+            centerY = CHeight/2 + CHeight/2 * Distortion.left.green.center_y;
             for (let iC = 0; iC < imgData.data.length; iC += 4) {
                 if(imgData.data[iC] + imgData.data[iC + 1] + imgData.data[iC + 2] > 0) {
                     y = Math.floor(iC / 4 / imgData.width);
                     x = iC / 4 - y * imgData.width;
                     dX = x - centerX;
                     dY = y - centerY;
-                    GridDataLeft.push([dX, dY]);
+                    radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
+                    GridDataLeft.push([dX, dY, radius]);
                 }
             }
 
-            imgData=ctx.getImageData(cw/2,0,cw,ch);
             GridDataRight = [];
+            imgData=Ctx.getImageData(CWidth/2,0,CWidth,CHeight);
+            centerX = Math.round((CWidth - CWidth / 4) + CWidth / 4 * Distortion.right.green.center_x);
+            centerY = CHeight/2 + CHeight/2 * Distortion.right.green.center_y;
             for (let iC = 0; iC < imgData.data.length; iC += 4) {
                 if(imgData.data[iC] + imgData.data[iC + 1] + imgData.data[iC + 2] > 0) {
                     y = Math.floor(iC / 4 / imgData.width);
-                    x = iC / 4 - y * imgData.width;
+                    x = (iC / 4 - y * imgData.width) + (CWidth / 2);
                     dX = x - centerX;
                     dY = y - centerY;
-                    GridDataRight.push([dX, dY]);
+                    radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
+                    GridDataRight.push([dX, dY, radius]);
                 }
             }
-//          console.log(GridDataLeft);
-            distortImage("left");
-            distortImage("right");
-            drawCross();
+            appendDistortions();
         }
 
         function drawCross() {
-            ctx.strokeStyle="#00DD00";
-            strokeLine(0, cYL, cw/2, cYL);
-            strokeLine(cXL, 0, cXL, ch);
-            strokeLine(cw/2, cYR, cw, cYR);
-            strokeLine(cXR, 0, cXR, ch);
+            let dLeftCenterX = Distortion.left.center[0];
+            let dLeftCenterY = Distortion.left.center[1];
+            let dRightCenterX = Distortion.right.center[0];
+            let dRightCenterY = Distortion.right.center[1];
+
+            Ctx.strokeStyle="#00DD00";
+            strokeLine(0, dLeftCenterY, CWidth/2, dLeftCenterY);
+            strokeLine(dLeftCenterX, 0, dLeftCenterX, CHeight);
+            strokeLine(CWidth/2, dRightCenterY, CWidth, dRightCenterY);
+            strokeLine(dRightCenterX, 0, dRightCenterX, CHeight);
         }
 
         function distortImage(eye) {
-            console.log("Coeff1 " + eye +": " + Coeff1);
-            console.log("Radius " + eye +": " + MaxRadius);
-//          let startTimer = performance.now();
+            let startTimer = performance.now();
             let xStart = 0;
-            let xStop = cw/2;
-            let Grid = GridDataLeft;
+            let xStop = CWidth/2;
+            let grid = GridDataLeft;
+            let centerX = Distortion.left.center[0];
+            let centerY = Distortion.left.center[1];
+            let coeffs = Distortion.left;
+
             if(eye === "right") {
-                xStart = cw/2;
-                xStop = cw;
-                Grid = GridDataRight;
+                xStart = CWidth/2;
+                xStop = CWidth;
+                grid = GridDataRight;
+                centerX = Distortion.right.center[0];
+                centerY = Distortion.right.center[1];
+                coeffs = Distortion.right;
             }
-            let centerX = (xStart + xStop) / 2;
-            let centerY = ch/2;
+//            console.log("Coeffs " + eye +": ");
+//            console.log(coeffs);
 
+            let distorted = Ctx.createImageData(CWidth/2, CHeight);
+            for (let iC = 0; iC < grid.length; iC ++) {
+                ['green', 'blue', 'red'].forEach(function(color) {
+                    let coefC1 = coeffs[color].coeffs[0];
+                    let coefC2 = coeffs[color].coeffs[1] + coefC1*coefC1;
+                    let coefC3 = coeffs[color].coeffs[2];
 
-            let Distorted = ctx.createImageData(cw/2,ch);
-            for (let iC = 0; iC < Grid.length; iC ++) {
-                let dX = GridDataLeft[iC][0];
-                let dY = GridDataLeft[iC][1];
-                let radius = Math.sqrt(dX*dX + dY*dY);
-                let radiusPercent = radius / (MaxRadius);
+                    let coef1 = coefC1 * Math.pow(grid[iC][2],2);
+                    let coef2 = coefC2 * Math.pow(grid[iC][2],4);
+                    let coef3 = coefC3 * Math.pow(grid[iC][2],6);
 
-                let coef1 = Coeff1*Math.pow(radiusPercent,2);
-                let coef2 = Coeff2*Math.pow(radiusPercent,4) + coef1*coef1;
-                let coef3 = Coeff3*Math.pow(radiusPercent,6) - coef2*coef2;
-
-                let RadiusCoeff = 1/(1 + coef1 + coef2 + coef3);
-                let newX = Math.round(centerX + (dX / RadiusCoeff));
-                let newY = Math.round(centerY + (dY / RadiusCoeff));
-                if(newX > xStart && newX < xStop && newY > 0 && newY < ch) {
-                    let distNumber = (newY*Distorted.width)*4 + newX*4;
-                    Distorted.data[distNumber] = 136;
-                    Distorted.data[distNumber+1] = 136;
-                    Distorted.data[distNumber+2] = 136;
-                    Distorted.data[distNumber+3] = 255;
-                }
+                    let RadiusCoeff = 1/(1 + coef1 + coef2 + coef3);
+                    let newX = Math.round(centerX + (grid[iC][0] / RadiusCoeff));
+                    let newY = Math.round(centerY + (grid[iC][1] / RadiusCoeff));
+                    if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight) {
+                        let distNumber = (newY * distorted.width + newX)*4;
+                        if(color === 'red') distorted.data[distNumber] += 255;
+                        if(color === 'green') distorted.data[distNumber+1] += 255;
+                        if(color === 'blue') distorted.data[distNumber+2] += 255;
+                        distorted.data[distNumber+3] = 255;
+                    }
+                });
             }
-            ctx.putImageData(Distorted, xStart, 0);
-//          let bench = performance.now() - startTimer;
-//          console.log("Finished in:" + Math.round(bench) + "ms");
+            Ctx.putImageData(distorted, xStart, 0);
+            let bench = performance.now() - startTimer;
+            console.log("Finished in:" + Math.round(bench) + "ms");
         }
 
-        document.addEventListener("keydown", keyDownHandle, false);
+        function appendDistortions() {
+            // let startTimer = performance.now();
+
+            let dLeftCenterX = Math.round(CWidth / 4 + CWidth / 4 * Distortion.left.green.center_x);
+            let dLeftCenterY = Math.round(CHeight/2 + CHeight/2 * Distortion.left.green.center_y);
+            let dRightCenterX = Math.round((CWidth - CWidth / 4) + CWidth / 4 * Distortion.right.green.center_x);
+            let dRightCenterY = Math.round(CHeight/2 + CHeight/2 * Distortion.right.green.center_y);
+            Distortion.left.center  = [dLeftCenterX, dLeftCenterY];
+            Distortion.right.center = [dRightCenterX, dRightCenterY];
+            distortImage("left");
+            distortImage("right");
+            drawCross();
+
+            let statusText = '<P>Coefficients: <BR>';
+            statusText += "Left:<BR> Green: [" + Distortion.left.green.coeffs[0] + ", " +Distortion.left.green.coeffs[1] + ", " +Distortion.left.green.coeffs[2] + " ]";
+            statusText += "Blue: [" + Distortion.left.blue.coeffs[0] + ", " +Distortion.left.blue.coeffs[1] + ", " +Distortion.left.blue.coeffs[2] + "] ";
+            statusText += "Red: [" + Distortion.left.red.coeffs[0] + ", " +Distortion.left.red.coeffs[1] + ", " +Distortion.left.red.coeffs[2] + "]<BR>";
+            statusText += "Right:<BR> Green: [" + Distortion.right.green.coeffs[0] + ", " +Distortion.right.green.coeffs[1] + ", " +Distortion.right.green.coeffs[2] + "] ";
+            statusText += "Blue: [" + Distortion.right.blue.coeffs[0] + ", " +Distortion.right.blue.coeffs[1] + ", " +Distortion.right.blue.coeffs[2] + "] ";
+            statusText += "Red: [" + Distortion.right.red.coeffs[0] + ", " +Distortion.right.red.coeffs[1] + ", " +Distortion.right.red.coeffs[2] + "]<BR>";
+            statusText += "Positions: <BR>Left<BR>";
+            statusText += "Intrinsics: [" + Intrinsics.left.shiftX + ", " + Intrinsics.left.shiftY + "], Distortion: ["+Distortion.left.green.center_x+", "+Distortion.left.green.center_y+"]<BR>";
+            statusText += "Right:<BR>";
+            statusText += "Intrinsics: [" + Intrinsics.right.shiftX + ", " + Intrinsics.right.shiftY + "], Distortion: ["+Distortion.right.green.center_x+", "+Distortion.right.green.center_y+"]<BR>";
+
+            statusText += "</P>";
+            document.getElementById('leftEyeInterface').innerHTML = statusText;
+            document.getElementById('rightEyeInterface').innerHTML = statusText;
+            // let bench = performance.now() - startTimer;
+            // console.log("Finished Append in:" + Math.round(bench) + "ms");
+        }
+
+        document.addEventListener("keydown", keyDownHandle);
 
         function keyDownHandle(e) {
-            var keyCode = e.keyCode;
-//          console.log(e);
+//            var keyCode = e.keyCode;
+//             console.log(e);
 
-            if(e.code === "Digit1" && e.shiftKey === false) {
+            if(e.code === "KeyR" && e.shiftKey === false) {
                 MaxRadius += 1;
-                ctx.clearRect(0, 0, cw, ch);
-                distortImage("left");
-                distortImage("right");
-                drawCross();
+                appendDistortions();
             }
-            if(e.code === "Digit1" && e.shiftKey === true) {
+            if(e.code === "KeyR" && e.shiftKey === true) {
                 MaxRadius -= 1;
-                ctx.clearRect(0, 0, cw, ch);
-                distortImage("left");
-                distortImage("right");
-                drawCross();
+                appendDistortions();
             }
+
+            if(e.keyCode === 49 && e.shiftKey === false) {  // 1
+                Distortion.left.green.coeffs[0] += 0.01;
+                Distortion.right.green.coeffs[0] += 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 49 && e.shiftKey === true) {  // 1
+                Distortion.left.green.coeffs[0] -= 0.01;
+                Distortion.right.green.coeffs[0] -= 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 50 && e.shiftKey === false) {   // 2
+                Distortion.left.green.coeffs[1] += 0.01;
+                Distortion.right.green.coeffs[1] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 50 && e.shiftKey === true) {  // 2
+                Distortion.left.green.coeffs[1] -= 0.01;
+                Distortion.right.green.coeffs[1] -= 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 51 && e.shiftKey === false) {  // 3
+                Distortion.left.green.coeffs[2] += 0.01;
+                Distortion.right.green.coeffs[2] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 51 && e.shiftKey === true) {  // 3
+                Distortion.left.green.coeffs[2] -= 0.01;
+                Distortion.right.green.coeffs[2] -= 0.01;
+                appendDistortions();
+            }
+
+            if(e.keyCode === 52 && e.shiftKey === false) {  // 4
+                Distortion.left.blue.coeffs[0] += 0.01;
+                Distortion.right.blue.coeffs[0] += 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 52 && e.shiftKey === true) {  // 4
+                Distortion.left.blue.coeffs[0] -= 0.01;
+                Distortion.right.blue.coeffs[0] -= 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 53 && e.shiftKey === false) {   // 5
+                Distortion.left.blue.coeffs[1] += 0.01;
+                Distortion.right.blue.coeffs[1] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 53 && e.shiftKey === true) {  // 5
+                Distortion.left.blue.coeffs[1] -= 0.01;
+                Distortion.right.blue.coeffs[1] -= 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 54 && e.shiftKey === false) {  // 6
+                Distortion.left.blue.coeffs[2] += 0.01;
+                Distortion.right.blue.coeffs[2] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 54 && e.shiftKey === true) {  // 6
+                Distortion.left.blue.coeffs[2] -= 0.01;
+                Distortion.right.blue.coeffs[2] -= 0.01;
+                appendDistortions();
+            }
+
+            if(e.keyCode === 55 && e.shiftKey === false) {  // 7
+                Distortion.left.red.coeffs[0] += 0.01;
+                Distortion.right.red.coeffs[0] += 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 55 && e.shiftKey === true) {  // 7
+                Distortion.left.red.coeffs[0] -= 0.01;
+                Distortion.right.red.coeffs[0] -= 0.01;
+                appendDistortions();
+                e.preventDefault();
+            }
+            if(e.keyCode === 56 && e.shiftKey === false) {   // 8
+                Distortion.left.red.coeffs[1] += 0.01;
+                Distortion.right.red.coeffs[1] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 56 && e.shiftKey === true) {  // 8
+                Distortion.left.red.coeffs[1] -= 0.01;
+                Distortion.right.red.coeffs[1] -= 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 57 && e.shiftKey === false) {  // 9
+                Distortion.left.red.coeffs[2] += 0.01;
+                Distortion.right.red.coeffs[2] += 0.01;
+                appendDistortions();
+            }
+            if(e.keyCode === 57 && e.shiftKey === true) {  // 9
+                Distortion.left.red.coeffs[2] -= 0.01;
+                Distortion.right.red.coeffs[2] -= 0.01;
+                appendDistortions();
+            }
+
+            if(e.keyCode === 39 && e.shiftKey === true) {   // Right
+                Intrinsics.left.shiftX -= 0.001;
+                if(Intrinsics.left.shiftX < -1) Intrinsics.left.shiftX = -1;
+                Intrinsics.right.shiftX += 0.001;
+                if(Intrinsics.right.shiftX > 1) Intrinsics.right.shiftX = 1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 37 && e.shiftKey === true) {  // Left
+                Intrinsics.left.shiftX += 0.001;
+                if(Intrinsics.left.shiftX > 1) Intrinsics.left.shiftX = 1;
+                Intrinsics.right.shiftX -= 0.001;
+                if(Intrinsics.right.shiftX < -1) Intrinsics.right.shiftX = -1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 38 && e.shiftKey === true) {  // Up
+                Intrinsics.left.shiftY -= 0.001;
+                if(Intrinsics.left.shiftY < -1) Intrinsics.left.shiftY = -1;
+                Intrinsics.right.shiftY += 0.001;
+                if(Intrinsics.right.shiftY > 1) Intrinsics.right.shiftY = 1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 40 && e.shiftKey === true) {  // Down
+                Intrinsics.left.shiftY += 0.001;
+                if(Intrinsics.left.shiftY > 1) Intrinsics.left.shiftY = 1;
+                Intrinsics.right.shiftY -= 0.001;
+                if(Intrinsics.right.shiftY < -1) Intrinsics.right.shiftY = -1;
+                drawGrid();
+                e.preventDefault();
+            }
+
+
+            if(e.keyCode === 39 && e.ctrlKey === true) {  // Right
+                Distortion.left.green.center_x -= 0.001;
+                if(Distortion.left.green.center_x < -1) Distortion.left.green.center_x = -1;
+                Distortion.right.green.center_x += 0.001;
+                if(Distortion.right.green.center_x > 1) Distortion.right.green.center_x = 1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 37 && e.ctrlKey === true) {  // Left
+                Distortion.left.green.center_x += 0.001;
+                if(Distortion.left.green.center_x > 1) Distortion.left.green.center_x = 1;
+                Distortion.right.green.center_x -= 0.001;
+                if(Distortion.right.green.center_x < -1) Distortion.right.green.center_x = -1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 38 && e.ctrlKey === true) {  // Up
+                Distortion.left.green.center_y -= 0.001;
+                if(Distortion.left.green.center_y < -1) Distortion.left.green.center_y = -1;
+                Distortion.right.green.center_y += 0.001;
+                if(Distortion.right.green.center_y > 1) Distortion.right.green.center_y = 1;
+                drawGrid();
+                e.preventDefault();
+            }
+            if(e.keyCode === 40 && e.ctrlKey === true) {  // Down
+                Distortion.left.green.center_y += 0.001;
+                if(Distortion.left.green.center_y > 1) Distortion.left.green.center_y = 1;
+                Distortion.right.green.center_y -= 0.001;
+                if(Distortion.right.green.center_y < -1) Distortion.right.green.center_y = -1;
+                drawGrid();
+                e.preventDefault();
+            }
+
         }
     </script>
+    <STYLE>
+        body::-webkit-scrollbar {
+            display: none;
+        }
+    </STYLE>
 </head>
-<body onload="drawGrid()" style="margin:0;border:0;padding:0;background:#000;">
-<img src="DPOLY3.png" style="position:absolute;left:0;top:0;">
-<canvas id="canvas" width="2160" height="1200" style="position:absolute;left:0;top:0;">
+<body style="margin:0;border:0;padding:0;background:#000;" onload="prepareData()">
+<img src="ALL.png">
+<canvas id="canvas" width="2160" height="1200" style="position: absolute; top: 0; left: 0"></canvas>
+<SCRIPT>
+    Canvas = document.getElementById('canvas');
+    Ctx = Canvas.getContext('2d');
+    Ctx.translate(0.5, 0.5); // no alias lines
+    CWidth = Canvas.width;
+    CHeight = Canvas.height;
+    MaxRadius = CWidth/4;
+
+</SCRIPT>
+<DIV style="color: white; padding: 500px;">
+    <label for="JSONData">Put your SteamVR JSON Here</label><BR><textarea id="JSONData" rows="10" cols="100">
+{
+    "tracking_to_eye_transform": [
+        {
+            "distortion": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    -0.15,
+                    0,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "distortion_blue": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    -0.15,
+                    -0.1,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "distortion_red": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    -0.15,
+                    -0.1,
+                    -0.1,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "extrinsics": [
+                [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.03109734132885933
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0,
+                    -2.235174179077148e-08
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0,
+                    -7.450580596923828e-09
+                ]
+            ],
+            "grow_for_undistort": 0.0,
+            "intrinsics": [
+                [
+                    1.2,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.08,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    -1.0
+                ]
+            ],
+            "undistort_r2_cutoff": 0.0
+        },
+        {
+            "distortion": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    0,
+                    -0.2,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "distortion_blue": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    0,
+                    -0.2,
+                    0.1,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "distortion_red": {
+                "center_x": 0.0,
+                "center_y": 0.0,
+                "coeffs": [
+                    0,
+                    -0.2,
+                    -0.1,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "type": "DISTORT_DPOLY3"
+            },
+            "extrinsics": [
+                [
+                    1.0,
+                    0.0,
+                    0.0,
+                    -0.03109737858176231
+                ],
+                [
+                    0.0,
+                    1.0,
+                    0.0,
+                    -2.235174179077148e-08
+                ],
+                [
+                    0.0,
+                    0.0,
+                    1.0,
+                    -7.450580596923828e-09
+                ]
+            ],
+            "grow_for_undistort": 0.0,
+            "intrinsics": [
+                [
+                    1.2,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    1.08,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    -1.0
+                ]
+            ],
+            "undistort_r2_cutoff": 0.0
+        }
+    ]
+}
+</textarea><BR>
+    <input type="button" value="Parse" onclick="prepareData()">
+</DIV>
+<DIV style="width: 1200px;height:1200px;position: relative;color: #777;">
+    <DIV style="position: absolute;left: 0;top: 0;padding:500px;width: 100%;" id="leftEyeInterface">TEST</DIV>
+    <DIV style="position: absolute;left: 1080px;top: 0;padding:500px;width: 100%;" id="rightEyeInterface">TEST</DIV>
+</DIV>
 </body>
 </html>
