@@ -466,7 +466,8 @@
 </SCRIPT>
 <DIV style="color: white; padding: 500px;">
     <label for="JSONData">Put your SteamVR JSON Here</label><BR><textarea id="JSONData" rows="10" cols="100">
-    "tracking_to_eye_transform": [
+{
+"tracking_to_eye_transform": [
         {
             "distortion": {
                 "center_x": 0,
@@ -640,6 +641,8 @@
             "undistort_r2_cutoff": 1.112588882446289
         }
     ]
+}
+
 </textarea><BR>
     <input type="button" value="Parse" onclick="prepareData()">
 </DIV>
