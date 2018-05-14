@@ -4,7 +4,10 @@
 
         let Canvas, Ctx, CWidth, CHeight;
         let CXL, CXR, CYL, CYR, MaxRadius, GridSpace;
-        GridSpace = 49;
+        GridSpace = 46.6;
+        MaxRadius = {};
+        MaxRadius['left'] = Math.sqrt((600*600) + (540*540));
+        MaxRadius['right'] = Math.sqrt((600*600) + (540*540));
         let Distortion = {
             left:{center:[0.0, 0.0], red:{}, green:{}, blue:{}},
             right: {center:[0.0, 0.0], red:{}, green:{}, blue:{}}
@@ -24,7 +27,7 @@
             }
         };
 
-        let GridDataLeft, GridDataRight;
+        let GridData;
         let JsonData;
 
         function prepareData() {
@@ -138,7 +141,7 @@
             // Ctx.arc(CXR, CYR, 0.7*CWidth/4, 0, 2*Math.PI);
             // Ctx.stroke();
 
-            GridDataLeft = [];
+            GridData = {'left': [], 'right': []};
             let imgData=Ctx.getImageData(0,0,CWidth/2,CHeight);
             let x, y, dX, dY, radius, centerX, centerY;
             centerX = Math.round(CWidth / 4 + CWidth / 4 * Distortion.left.green.center_x);
@@ -150,11 +153,10 @@
                     dX = x - centerX;
                     dY = y - centerY;
                     // radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
-                    GridDataLeft.push([dX, dY]);
+                    GridData.left.push([dX, dY]);
                 }
             }
 
-            GridDataRight = [];
             imgData=Ctx.getImageData(CWidth/2,0,CWidth,CHeight);
             centerX = Math.round((CWidth - CWidth / 4) + CWidth / 4 * Distortion.right.green.center_x);
             centerY = CHeight/2 + CHeight/2 * Distortion.right.green.center_y;
@@ -165,7 +167,7 @@
                     dX = x - centerX;
                     dY = y - centerY;
                     // radius = Math.sqrt(dX*dX + dY*dY) / MaxRadius;
-                    GridDataRight.push([dX, dY]);
+                    GridData.right.push([dX, dY]);
                 }
             }
             appendDistortions();
@@ -188,54 +190,73 @@
             let startTimer = performance.now();
             let xStart = 0;
             let xStop = CWidth/2;
-            let grid = GridDataLeft;
-            let centerX = Distortion.left.center[0];
-            let centerY = Distortion.left.center[1];
-            let coeffs = Distortion.left;
 
             if(eye === "right") {
                 xStart = CWidth/2;
                 xStop = CWidth;
-                grid = GridDataRight;
-                centerX = Distortion.right.center[0];
-                centerY = Distortion.right.center[1];
-                coeffs = Distortion.right;
             }
-//            console.log("Coeffs " + eye +": ");
-//            console.log(coeffs);
+
+            let centerX = Distortion[eye].center[0];
+            let centerY = Distortion[eye].center[1];
+            let coeffs = Distortion[eye];
+            let MaxRadiusEye = MaxRadius[eye];
+            let grid = GridData[eye];
+
 
             let distorted = Ctx.createImageData(CWidth/2, CHeight);
-            for (let iC = 0; iC < grid.length; iC ++) {
-                ['red'].forEach(function(color) {
-                    let coefC1 = coeffs[color].coeffs[0];
-                    let coefC2 = coeffs[color].coeffs[1]; //  - coefC1*coefC1;
-                    let coefC3 = coeffs[color].coeffs[2]; // - coefC2*coefC2 - coefC1*coefC1 ;
+            ['red'].forEach(function(color) {
 
-                    //console.log(coefC1, coefC2, coefC3);
-                    let radiusNorm = Math.sqrt(grid[iC][0]*grid[iC][0] + grid[iC][1]*grid[iC][1]) / MaxRadius;
+                let coefC0 = Math.pow(coeffs[color].coeffs[0],1) * 2;
+                let coefC1 = Math.pow(coeffs[color].coeffs[1],1) + Math.pow(coefC0,2) + Math.pow(coefC0,6);// + Math.pow(coeffs[color].coeffs[0],2);
+                let coefC2 = Math.pow(coeffs[color].coeffs[2],1) - Math.pow(coefC0,4) - Math.pow(coefC1,16);
 
-                    let coef1 = coefC1 * Math.pow(radiusNorm,2);
-                    let coef2 = coefC2 * Math.pow(radiusNorm,4);
-                    let coef3 = coefC3 * Math.pow(radiusNorm,6);
+                console.log(eye+' eye:');
+                console.log(MaxRadiusEye);
+                let maxRadCoeff = 1 / (1 + coefC0 + coefC1 + coefC2);  // Possible, can be used somehow. :)
+                let newMaxRadius = MaxRadiusEye ; ///(1+coefN); //*((1 + Math.pow(coefC1,2) + Math.pow(coefC2,4) + Math.pow(coefC3,6)));
+                //let coefN = 1 + coefC0 + coefC1 + coefC2;
 
-                    let RadiusCoeff = 1 / (1 + coef1 + coef2 + coef3);
+                console.log(coeffs[color].coeffs[0], coeffs[color].coeffs[1], coeffs[color].coeffs[2]);
+                console.log(coefC0, coefC1, coefC2, maxRadCoeff);
+                console.log(newMaxRadius);
+                for (let iC = 0; iC < grid.length; iC ++) {
+                    let radiusNorm = Math.sqrt((grid[iC][0] * grid[iC][0]) + (grid[iC][1] * grid[iC][1])) / newMaxRadius;
 
+                    let coef1 = coefC0 * Math.pow(radiusNorm, 2);
+                    let coef2 = coefC1 * Math.pow(radiusNorm, 4);
+                    let coef3 = coefC2 * Math.pow(radiusNorm, 6);
+
+                    let RadiusCoeff = (1 / (1 + coef1 + coef2 + coef3));
+                    //console.log(RadiusCoeff);
                     let newX = Math.round(centerX + (grid[iC][0] / RadiusCoeff));
                     let newY = Math.round(centerY + (grid[iC][1] / RadiusCoeff));
-                    if(newX > xStart && newX < xStop && newY > 0 && newY < CHeight && RadiusCoeff < 1.5 && RadiusCoeff > 0) {
-                        let distNumber = (newY * distorted.width + newX)*4;
-                        if(color === 'red') distorted.data[distNumber] += 100;
-                        if(color === 'green') distorted.data[distNumber+1] += 100;
-                        if(color === 'blue') distorted.data[distNumber+2] += 100;
-                        distorted.data[distNumber+3] = 255;
+                    if (newX > xStart && newX < xStop && newY > 0 && newY < CHeight && RadiusCoeff < 2 && RadiusCoeff > 0) {
+                        let distNumber = (newY * distorted.width + newX) * 4;
+                        if (color === 'red') distorted.data[distNumber] += 100;
+                        if (color === 'green') distorted.data[distNumber + 1] += 100;
+                        if (color === 'blue') distorted.data[distNumber + 2] += 100;
+                        distorted.data[distNumber + 3] = 255;
                     }
-                });
-            }
+                }
+            });
+
             Ctx.putImageData(distorted, xStart, 0);
             let bench = performance.now() - startTimer;
-            console.log("Finished in:" + Math.round(bench) + "ms");
+//            console.log("Finished in:" + Math.round(bench) + "ms");
         }
 
+
+        function nthroot(x, n) {
+            try {
+                var negate = n % 2 == 1 && x < 0;
+                if(negate)
+                    x = -x;
+                var possible = Math.pow(x, 1 / n);
+                n = Math.pow(possible, n);
+                if(Math.abs(x - n) < 1 && (x > 0 == n > 0))
+                    return negate ? -possible : possible;
+            } catch(e){}
+        }
         function appendDistortions() {
             // let startTimer = performance.now();
 
@@ -275,23 +296,34 @@
 //             console.log(e);
 
             if(e.code === "KeyR" && e.shiftKey === false) {
-                MaxRadius += 10;
-                console.log(MaxRadius);
+                MaxRadius['left'] += 5;
+                console.log(MaxRadius['left']);
                 appendDistortions();
             }
             if(e.code === "KeyR" && e.shiftKey === true) {
-                MaxRadius -= 10;
-                console.log(MaxRadius);
+                MaxRadius['left'] -= 5;
+                console.log(MaxRadius['left']);
+                appendDistortions();
+            }
+            if(e.code === "KeyT" && e.shiftKey === false) {
+                MaxRadius['right'] += 5;
+                console.log(MaxRadius['right']);
+                appendDistortions();
+            }
+            if(e.code === "KeyT" && e.shiftKey === true) {
+                MaxRadius['right'] -= 5;
+                console.log(MaxRadius['right']);
                 appendDistortions();
             }
 
+
             if(e.code === "KeyG" && e.shiftKey === false) {
-                GridSpace += 1;
+                GridSpace += 0.1;
                 console.log(GridSpace);
                 drawGrid();
             }
             if(e.code === "KeyG" && e.shiftKey === true) {
-                GridSpace -= 1;
+                GridSpace -= 0.1;
                 console.log(GridSpace);
                 drawGrid();
             }
@@ -328,63 +360,51 @@
             }
 
             if(e.keyCode === 52 && e.shiftKey === false) {  // 4
-                Distortion.left.blue.coeffs[0] += 0.001;
-                Distortion.right.blue.coeffs[0] += 0.001;
+                Distortion.left.red.coeffs[0] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 52 && e.shiftKey === true) {  // 4
-                Distortion.left.blue.coeffs[0] -= 0.001;
-                Distortion.right.blue.coeffs[0] -= 0.001;
+                Distortion.left.red.coeffs[0] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 53 && e.shiftKey === false) {   // 5
-                Distortion.left.blue.coeffs[1] += 0.001;
-                Distortion.right.blue.coeffs[1] += 0.001;
+                Distortion.left.red.coeffs[1] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 53 && e.shiftKey === true) {  // 5
-                Distortion.left.blue.coeffs[1] -= 0.001;
-                Distortion.right.blue.coeffs[1] -= 0.001;
+                Distortion.left.red.coeffs[1] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 54 && e.shiftKey === false) {  // 6
-                Distortion.left.blue.coeffs[2] += 0.001;
-                Distortion.right.blue.coeffs[2] += 0.001;
+                Distortion.left.red.coeffs[2] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 54 && e.shiftKey === true) {  // 6
-                Distortion.left.blue.coeffs[2] -= 0.001;
-                Distortion.right.blue.coeffs[2] -= 0.001;
+                Distortion.left.red.coeffs[2] -= 0.001;
                 appendDistortions();
             }
 
             if(e.keyCode === 55 && e.shiftKey === false) {  // 7
-                Distortion.left.red.coeffs[0] += 0.001;
                 Distortion.right.red.coeffs[0] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 55 && e.shiftKey === true) {  // 7
-                Distortion.left.red.coeffs[0] -= 0.001;
                 Distortion.right.red.coeffs[0] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 56 && e.shiftKey === false) {   // 8
-                Distortion.left.red.coeffs[1] += 0.001;
                 Distortion.right.red.coeffs[1] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 56 && e.shiftKey === true) {  // 8
-                Distortion.left.red.coeffs[1] -= 0.001;
                 Distortion.right.red.coeffs[1] -= 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 57 && e.shiftKey === false) {  // 9
-                Distortion.left.red.coeffs[2] += 0.001;
                 Distortion.right.red.coeffs[2] += 0.001;
                 appendDistortions();
             }
             if(e.keyCode === 57 && e.shiftKey === true) {  // 9
-                Distortion.left.red.coeffs[2] -= 0.001;
                 Distortion.right.red.coeffs[2] -= 0.001;
                 appendDistortions();
             }
@@ -394,6 +414,7 @@
                 if(Intrinsics.left.shiftX < -1) Intrinsics.left.shiftX = -1;
                 Intrinsics.right.shiftX += 0.001;
                 if(Intrinsics.right.shiftX > 1) Intrinsics.right.shiftX = 1;
+                console.log(Intrinsics.left.shiftX, Intrinsics.right.shiftX);
                 drawGrid();
                 e.preventDefault();
             }
@@ -402,22 +423,25 @@
                 if(Intrinsics.left.shiftX > 1) Intrinsics.left.shiftX = 1;
                 Intrinsics.right.shiftX -= 0.001;
                 if(Intrinsics.right.shiftX < -1) Intrinsics.right.shiftX = -1;
+                console.log(Intrinsics.left.shiftX, Intrinsics.right.shiftX);
                 drawGrid();
                 e.preventDefault();
             }
             if(e.keyCode === 38 && e.shiftKey === true) {  // Up
-                Intrinsics.left.shiftY -= 0.001;
-                if(Intrinsics.left.shiftY < -1) Intrinsics.left.shiftY = -1;
+                Intrinsics.left.shiftY += 0.001;
+                if(Intrinsics.left.shiftY > 1) Intrinsics.left.shiftY = 1;
                 Intrinsics.right.shiftY += 0.001;
                 if(Intrinsics.right.shiftY > 1) Intrinsics.right.shiftY = 1;
+                console.log(Intrinsics.left.shiftY, Intrinsics.right.shiftY);
                 drawGrid();
                 e.preventDefault();
             }
             if(e.keyCode === 40 && e.shiftKey === true) {  // Down
-                Intrinsics.left.shiftY += 0.001;
-                if(Intrinsics.left.shiftY > 1) Intrinsics.left.shiftY = 1;
+                Intrinsics.left.shiftY -= 0.001;
+                if(Intrinsics.left.shiftY < -1) Intrinsics.left.shiftY = -1;
                 Intrinsics.right.shiftY -= 0.001;
                 if(Intrinsics.right.shiftY < -1) Intrinsics.right.shiftY = -1;
+                console.log(Intrinsics.left.shiftY, Intrinsics.right.shiftY);
                 drawGrid();
                 e.preventDefault();
             }
@@ -465,7 +489,7 @@
     </STYLE>
 </head>
 <body style="margin:0;border:0;padding:0;background:#000;" onload="prepareData()">
-<img src="0,2-0,4.png">
+<img src="-0.1 -0.3.png">
 <canvas id="canvas" width="2160" height="1200" style="position: absolute; top: 0; left: 0"></canvas>
 <SCRIPT>
     Canvas = document.getElementById('canvas');
@@ -473,7 +497,6 @@
     Ctx.translate(0.5, 0.5); // no alias lines
     CWidth = Canvas.width;
     CHeight = Canvas.height;
-    MaxRadius = CWidth/4;
 
 </SCRIPT>
 <DIV style="color: white; padding: 500px;">
@@ -486,7 +509,7 @@
                 "center_y": 0,
                 "coeffs": [
                     -0.1,
-                    0,
+                    -0.1,
                     0,
                     0.0,
                     0.0,
@@ -500,8 +523,8 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
+                    -0.2,
                     -0.1,
-                    0,
                     0,
                     0.0,
                     0.0,
@@ -515,7 +538,7 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.2,
+                    -0.1,
                     0,
                     0,
                     0.0,
@@ -549,14 +572,14 @@
             "grow_for_undistort": 0,
             "intrinsics": [
                 [
-                    1.208980321884155,
+                    1.20,
                     0.0,
-                    0
+                    -0.016
                 ],
                 [
                     0.0,
-                    1.088285446166992,
-                    0
+                    1.08,
+                    -0.002
                 ],
                 [
                     0.0,
@@ -564,15 +587,15 @@
                     -1.0
                 ]
             ],
-            "undistort_r2_cutoff": 1.139537453651428
+            "undistort_r2_cutoff": 1.4
         },
         {
             "distortion": {
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.3,
-                    0,
+                    -0.4,
+                    -0.1,
                     0,
                     0.0,
                     0.0,
@@ -586,8 +609,8 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.3,
-                    0,
+                    -0.4,
+                    -0.1,
                     0,
                     0.0,
                     0.0,
@@ -601,7 +624,7 @@
                 "center_x": 0,
                 "center_y": 0,
                 "coeffs": [
-                    -0.4,
+                    -0.3,
                     0,
                     0,
                     0.0,
@@ -635,14 +658,14 @@
             "grow_for_undistort": 0,
             "intrinsics": [
                 [
-                    1.213360190391541,
+                    1.20,
                     0.0,
-                    0
+                    0.016
                 ],
                 [
                     0.0,
-                    1.09216833114624,
-                    0
+                    1.08,
+                    -0.002
                 ],
                 [
                     0.0,
@@ -650,10 +673,10 @@
                     -1.0
                 ]
             ],
-            "undistort_r2_cutoff": 1.112588882446289
+            "undistort_r2_cutoff": 1.4
         }
     ]
-    }
+}
 
 </textarea><BR>
     <input type="button" value="Parse" onclick="prepareData()">
